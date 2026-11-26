@@ -2,6 +2,7 @@
 
 ## Entities
 - [[token-meter]] — Claude Code plugin: one-line token/cost meter above the prompt, budgets, auto-compaction.
+- [[register-hooks]] — `register.tsx`: the events, state atoms, constants, and `/meter` command behind the plugin.
 - [[token-thrift]] — bundled skill: keeps replies, searches, and command output lean.
 
 ## Concepts
