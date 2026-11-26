@@ -16,7 +16,7 @@ Read the context fill from the token-meter line above the prompt (`████�
 | 70%+ | the same task, continuing | `Context is at N%: run /compact before we go much further.` |
 | 50%+ | unrelated to earlier work | Line 1 is `New topic and context is at N%: run /clear first, then re-ask.` Line 2 onward answers the user's question in full. |
 
-Do the work anyway (the user decides), then open your final message with that line, so it is the last thing the user reads before typing.
+Do the work anyway (the user decides). Line 1 of your final message is that context line; the answer to the user's question follows from line 2.
 
 ## Search recipe
 
