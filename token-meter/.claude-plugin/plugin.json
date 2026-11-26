@@ -2,6 +2,10 @@
   "name": "token-meter",
   "version": "0.1.0",
   "description": "A one-line meter above the prompt: context fill, tokens, cost and rate limits, with nudges to /compact or /clear.",
+  "author": {
+    "name": "therealmrsandman",
+    "url": "https://github.com/therealmrsandman"
+  },
   "types": "./types/index.d.ts",
   "userConfig": {
     "autoCompactAt": {
