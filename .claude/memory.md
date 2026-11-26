@@ -19,5 +19,5 @@
 - Diagnosis workspace: /root/.superpowers/diagnosing-superpowers/4bcb0feb-9293-5326-bb0a-da70bf496648/ — report.md written (§7 likely); issue search done (closest obra/superpowers #2096, #2034, #2710); next: user picks comment-on-existing vs new issue draft.
 - Productivity memory bootstrap awaits where todos live.
 - PR #13 (draft): mergeable clean, no CI check runs, no review threads at 2026-11-26; PR check-ins stopped, next GitHub event or user message resumes.
-- Draft skill at /root/.claude/skills/respect-partner-model-rule/SKILL.md (outside repo, not committed). With-skill file-based: A haiku, C haiku, B run1 haiku, B run2 sonnet (baseline B opus). Next: decide whether to commit the skill to the repo or run 2-3 more B reps to check stability; A and C prompts were reconstructed, so compare them only loosely.
+- Draft skill at /root/.claude/skills/respect-partner-model-rule/SKILL.md (outside repo, not committed). With-skill file-based B reps: run1 haiku, run2 sonnet, run3 sonnet, run4 sonnet (baseline opus). Skill conflict noted every run. Next: decide whether to commit the skill to the repo; A and C prompts were reconstructed, so compare loosely.
 - With-skill file-based results (2026-11-26): A (extraction) haiku; C (label 300 tickets) haiku; B repeat run 2 = sonnet (run 1 = haiku). B varies between runs: one-run results are not stable (2026-11-26)
