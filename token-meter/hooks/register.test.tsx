@@ -220,10 +220,21 @@ const autoCompactHarness = (on: On, compacts: string[]) => {
   on('ui.toast', () => ({ value: undefined }))
 }
 
-test('auto-compaction is off by default', async ($, on) => {
+test('auto-compaction defaults to 80%', async ($, on) => {
   const compacts: string[] = []
   autoCompactHarness(on, compacts)
-  await $.session.measure({ ...usage(180_000), changed: ['context'] })
+  await $.session.measure({ ...usage(150_000), changed: ['context'] }) // 75%
+  await $.turn.complete(done('a'))
+  expect(compacts).toEqual([])
+  await $.session.measure({ ...usage(164_000), changed: ['context'] }) // 82%
+  await $.turn.complete(done('b'))
+  expect(compacts).toHaveLength(1)
+})
+
+test('autoCompactAt 0 turns auto-compaction off', { options: { autoCompactAt: 0 } }, async ($, on) => {
+  const compacts: string[] = []
+  autoCompactHarness(on, compacts)
+  await $.session.measure({ ...usage(190_000), changed: ['context'] })
   await $.turn.complete(done('next'))
   expect(compacts).toEqual([])
 })
