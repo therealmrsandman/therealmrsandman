@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sed '1,/^---$/d' \"${CLAUDE_PLUGIN_ROOT}/skills/token-efficiency-routing/SKILL.md\""
+          }
+        ]
+      }
+    ]
+  }
+}
