@@ -22,7 +22,7 @@ At 50%, 70% and 85% it shows a one-time toast suggesting `/compact` or `/clear`,
 **Report:** `/meter report` prints a short, copy-pasteable summary: peak context, context now, est. cost, number of compactions, the three biggest turns (with the tool behind each), and budget use if one is set.
 **Surfaces:** the band is one row and is tested on the terminal, desktop app, VS Code and mobile app. On a narrow surface it drops the least important parts (limit, then top tools, then cost) so it still fits on one line.
 **Auto-compaction (off by default):** set the plugin option `autoCompactAt` (in `/config`, or `pluginConfigs["token-meter"].options.autoCompactAt` in settings.json) to a context % such as `75`. After a turn ends with context at or above it, token-meter runs a compaction for you (once per crossing) and toasts that it did. `0` keeps it off: you only get the nudges.
-Type `/meter` to hide or show the bar; any other argument besides `report` or `budget` prints usage. It makes no model calls, so it costs no tokens.
+Type `/meter` to hide or show the bar; any other argument besides `report` or `budget` prints usage. The meter itself makes no model calls, so it costs no tokens; only opt-in auto-compaction runs a (billed) compaction.
 It also bundles a `token-thrift` skill that keeps Claude's own replies, searches and noisy command output (test runs, builds, CI logs) lean and tells you when to `/compact` or `/clear`.
 
 ## Install
