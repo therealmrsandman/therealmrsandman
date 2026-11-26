@@ -240,3 +240,77 @@ test('autoCompactAt compacts after the turn once the context passes it', { optio
   await $.turn.complete(done('c')) // not again until a fresh reading
   expect(compacts).toEqual(['compact'])
 })
+
+test('after /clear the next turn is not counted as a spike, and est. cost stays', async ($, on) => {
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('session.end', (_, e) => ({ sessionId: e.sessionId }))
+
+  await $.session.measure({ ...usage(120_000, 2.5), changed: ['context'] })
+  await $.session.end({ reason: 'clear', sessionId: 's1', resume: { id: 's1' } })
+  let ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).toContain('~$2.50 est.')
+  await ui.unmount()
+
+  await $.session.measure({ ...usage(40_000, 2.6), changed: ['context'] }) // fresh base context
+  expect(toasts.some(t => /spike/i.test(t))).toBe(false)
+  ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).not.toContain('last turn')
+  await ui.unmount()
+})
+
+test('auto-compaction does not repeat while context stays above the threshold', { options: { autoCompactAt: 70 } }, async ($, on) => {
+  const compacts: string[] = []
+  autoCompactHarness(on, compacts)
+  await $.session.measure({ ...usage(164_000), changed: ['context'] }) // 82%
+  await $.turn.complete(done('a'))
+  await $.session.measure({ ...usage(148_000), changed: ['context'] }) // 74% after compaction
+  await $.turn.complete(done('b'))
+  expect(compacts).toHaveLength(1)
+  await $.session.measure({ ...usage(100_000), changed: ['context'] }) // 50%: below, re-arms
+  await $.turn.complete(done('c'))
+  await $.session.measure({ ...usage(150_000), changed: ['context'] }) // 75%: crosses again
+  await $.turn.complete(done('d'))
+  expect(compacts).toHaveLength(2)
+})
+
+test('the band fits bodyColumns on a narrow surface', async ($, on) => {
+  mock.store(on, { budget: { kind: 'usd', limit: 5 } })
+  on('session.usage', () => ({ value: { startedAt: 0, ...usage(40_000) } }))
+  on('command.register', () => ({ value: { command: 'meter' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('turn.start', (_, e) => ({ turnId: e.turnId }))
+  on('tool.call', () => ({ result: {}, text: 'x'.repeat(40_000) }) as never)
+
+  await $.session.start({ cwd: '/', surface: 'mobile', isInteractive: true })
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.tool.call({ tool: 'Read', tool_use_id: 'r1' } as never)
+  await $.session.measure({ ...usage(96_000, 0.84), changed: ['context'] })
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'mobile', props: { ...BAND.props, bodyColumns: 50 } })
+  const pct = (await ui.find({ type: 'Text', text: /%/ }))?.text ?? ''
+  const detail = (await ui.find({ type: 'Text', text: /ctx/ }))?.text ?? ''
+  expect(pct.length + detail.length).toBeLessThanOrEqual(50)
+  expect(detail).toContain('ctx 96k/200k')
+  await ui.unmount()
+})
+
+test('an unknown /meter subcommand explains usage and leaves the band shown', async ($, on) => {
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  await $.session.measure({ ...usage(20_000), changed: ['context'] })
+  expect((await $.command.run({ ...METER, args: 'reprot' })).text).toMatch(/report.*budget/)
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /ctx/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('/meter budget accepts $0 as off and commas in amounts', async ($, on) => {
+  mock.store(on)
+  expect((await $.command.run({ ...METER, args: 'budget 1,000,000' })).text).toContain('1000k tokens')
+  expect((await $.command.run({ ...METER, args: 'budget $0' })).text).toMatch(/cleared/i)
+})

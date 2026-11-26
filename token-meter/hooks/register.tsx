@@ -19,7 +19,7 @@ const budgetWarned = atom({ plugin: 'token-meter', key: 'budgetWarned' } as cons
 const spent = atom({ plugin: 'token-meter', key: 'spent' } as const, 0)
 const EMPTY_STATS: Stats = { peakPercent: 0, peakTokens: 0, compactions: 0, turns: [] }
 const stats = atom({ plugin: 'token-meter', key: 'stats' } as const, EMPTY_STATS)
-// Set once auto-compaction ran for the current crossing; a fresh reading clears it.
+// Set once auto-compaction ran for the current crossing; cleared when context drops below the threshold.
 const autoCompacted = atom({ plugin: 'token-meter', key: 'autoCompacted' } as const, false)
 
 // Budget levels (%) that fire a one-time toast.
@@ -48,17 +48,17 @@ const budgetPct = (b: Budget, r: Reading, used: number) =>
 
 // "$5", "5$", "2.50$" are dollars; "200000", "200k", "1.5m" are tokens.
 const parseBudget = (raw: string): Budget | 'off' | null => {
-  const s = raw.trim().toLowerCase()
-  if (['off', 'clear', 'none', '0'].includes(s)) return 'off'
+  const s = raw.trim().toLowerCase().replace(/,/g, '')
+  if (['off', 'clear', 'none'].includes(s)) return 'off'
   const usd = /^\$\s*(\d+(?:\.\d+)?)$|^(\d+(?:\.\d+)?)\s*\$$/.exec(s)
   if (usd) {
     const n = Number(usd[1] ?? usd[2])
-    return n > 0 ? { kind: 'usd', limit: n } : null
+    return n > 0 ? { kind: 'usd', limit: n } : 'off'
   }
   const tok = /^(\d+(?:\.\d+)?)\s*([km]?)$/.exec(s)
   if (!tok) return null
   const n = Math.round(Number(tok[1]) * (tok[2] === 'k' ? 1e3 : tok[2] === 'm' ? 1e6 : 1))
-  return n > 0 ? { kind: 'tokens', limit: n } : null
+  return n > 0 ? { kind: 'tokens', limit: n } : 'off'
 }
 
 const isBudget = (v: unknown): v is Budget =>
@@ -92,10 +92,10 @@ async function measure($: EngineInterface, u: Usage) {
     percent,
     usd: u.cost ? u.cost.usd : null,
     limit: top ? { kind: top.kind, percentUsed: top.percentUsed } : null,
-    turnDelta: prev ? tokens - prev.tokens : 0,
+    // prev.tokens is 0 only right after /clear: the next reading is a fresh base, not growth
+    turnDelta: prev && prev.tokens > 0 ? tokens - prev.tokens : 0,
   }
   await update($, reading, () => next)
-  await update($, autoCompacted, () => false)
 
   const biggest = (await read($, tools))[0]
   await update($, stats, st => ({
@@ -110,6 +110,7 @@ async function measure($: EngineInterface, u: Usage) {
         : st.turns,
   }))
 
+  const alerts: string[] = []
   const used = await update($, spent, n => n + Math.max(0, next.turnDelta))
   const b = await read($, budget)
   if (b) {
@@ -117,7 +118,7 @@ async function measure($: EngineInterface, u: Usage) {
     const level = BUDGET_LEVELS.filter(l => pct >= l).pop() ?? 0
     if (level > (await read($, budgetWarned))) {
       await update($, budgetWarned, () => level)
-      $.ui.toast(
+      alerts.push(
         level >= 100
           ? `Budget reached: 100% of ${fmtBudget(b)} used. Wrap up or /clear; /meter budget off to dismiss.`
           : `Budget at ${level}% of ${fmtBudget(b)}. /compact or narrower reads will stretch it.`,
@@ -127,7 +128,7 @@ async function measure($: EngineInterface, u: Usage) {
 
   if (next.window > 0 && next.turnDelta > next.window * SPIKE) {
     const top = (await read($, tools))[0]
-    $.ui.toast(
+    alerts.push(
       `Token spike: +${k(next.turnDelta)} in one turn (${Math.round((next.turnDelta / next.window) * 100)}% of the window)` +
         (top ? `, mostly ${top.name}.` : '.'),
     )
@@ -135,8 +136,9 @@ async function measure($: EngineInterface, u: Usage) {
 
   const crossed = THRESHOLDS.filter(t => percent >= t).pop() ?? 0
   const last = await read($, warned)
-  if (crossed > last) $.ui.toast(tip(percent))
+  if (crossed > last) alerts.push(tip(percent))
   if (crossed !== last) await update($, warned, () => crossed)
+  if (alerts.length) $.ui.toast(alerts.join(' '))
 
   $.ui.status(`ctx ${percent}% · ${k(tokens)}`)
 }
@@ -169,6 +171,7 @@ export const register: Register = (on, options) => {
     const res = await next(e)
     if (autoAt === 0 || e.agentId !== undefined || e.isAborted) return res
     const r = await read($, reading)
+    if (r && r.percent < autoAt) await update($, autoCompacted, () => false)
     if (r && r.percent >= autoAt && !(await read($, autoCompacted))) {
       await update($, autoCompacted, () => true)
       try {
@@ -184,11 +187,12 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     const saved = await $.store.get('budget').catch(() => undefined) // a missing store must not stop the meter
     if (isBudget(saved)) await update($, budget, () => saved)
-    await measure($, await $.session.usage()) // plain call: free, no API request
     await $.command.register({
       name: 'meter',
       description: 'Show/hide the token meter; report; budget <tokens|$>|off',
     })
+    // plain call: free, no API request; on failure the first turn's measure fills the band
+    await $.session.usage().then(u => measure($, u), () => undefined)
     return next(e)
   })
 
@@ -227,7 +231,7 @@ export const register: Register = (on, options) => {
     if (e.reason === 'clear') {
       const prev = await read($, reading)
       if (prev) {
-        await update($, reading, () => ({ ...prev, tokens: 0, percent: 0, usd: null, turnDelta: 0 }))
+        await update($, reading, () => ({ ...prev, tokens: 0, percent: 0, turnDelta: 0 }))
       }
       await update($, warned, () => 0)
       await update($, tools, () => [])
@@ -250,13 +254,16 @@ export const register: Register = (on, options) => {
       await update($, budgetWarned, () => 0)
       if (b === 'off') {
         await update($, budget, () => null)
-        await $.store.delete('budget')
-        return { text: 'Budget cleared.' }
+        const ok = await $.store.delete('budget').then(() => true, () => false)
+        return { text: ok ? 'Budget cleared.' : 'Budget cleared for this session (could not update the saved default).' }
       }
       await update($, budget, () => b)
-      await $.store.set('budget', b)
-      return { text: `Budget set: ${fmtBudget(b)} for this session (saved as the default for new ones).` }
+      const saved = await $.store.set('budget', b).then(() => true, () => false)
+      return {
+        text: `Budget set: ${fmtBudget(b)} for this session` + (saved ? ' (saved as the default for new ones).' : ' (could not save it as the default).'),
+      }
     }
+    if (sub) return { text: 'Usage: /meter (show/hide) · /meter report · /meter budget <$N|tokens|off>' }
     const hidden = await update($, isHidden, v => !v)
     return { text: hidden ? 'Token meter hidden. Run /meter again to show it.' : 'Token meter shown.' }
   })
@@ -270,20 +277,23 @@ export const register: Register = (on, options) => {
     const bPct = b ? budgetPct(b, r, await read($, spent)) : 0
     const color = b && bPct >= 80 ? 'red' : colorFor(r.percent)
     const { Box, Text } = $.ui.resolve(e)
+    const head = `${bar(r.percent)} ${r.percent}%`
+    // Highest priority first; segments are dropped from the end until the row fits.
+    const segs = [
+      `ctx ${k(r.tokens)}/${k(r.window)}`,
+      b ? `budget ${bPct}% of ${fmtBudget(b)}` : '',
+      r.turnDelta > 0 ? `+${k(r.turnDelta)} last turn` : '',
+      r.usd !== null ? `~$${r.usd.toFixed(2)} est.` : '',
+      top.length ? `top: ${top.map(t => `${t.name} ${k(t.tokens)}`).join(', ')}` : '',
+      r.limit ? `${r.limit.kind.replace(/_/g, '-')} limit ${Math.round(r.limit.percentUsed)}%` : '',
+    ].filter(Boolean)
+    const line = () => segs.map(x => `  ${x}`).join('')
+    while (segs.length > 1 && head.length + line().length > e.props.bodyColumns) segs.pop()
 
     return (
       <Box flexDirection="row">
-        <Text color={color}>
-          {bar(r.percent)} {r.percent}%
-        </Text>
-        <Text dimColor>
-          {'  '}ctx {k(r.tokens)}/{k(r.window)}
-          {r.turnDelta > 0 ? `  +${k(r.turnDelta)} last turn` : ''}
-          {r.usd !== null ? `  ~$${r.usd.toFixed(2)} est.` : ''}
-          {b ? `  budget ${bPct}% of ${fmtBudget(b)}` : ''}
-          {top.length ? `  top: ${top.map(t => `${t.name} ${k(t.tokens)}`).join(', ')}` : ''}
-          {r.limit ? `  ${r.limit.kind.replace(/_/g, '-')} limit ${Math.round(r.limit.percentUsed)}%` : ''}
-        </Text>
+        <Text color={color}>{head}</Text>
+        <Text dimColor>{line()}</Text>
       </Box>
     )
   })
