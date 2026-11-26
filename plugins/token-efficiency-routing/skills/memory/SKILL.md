@@ -1,6 +1,6 @@
 ---
 name: memory
-description: Use when a task finishes or a durable fact, decision, or reusable result appears. Saves it to permanent memory in as few tokens as possible so it never has to be researched again.
+description: Use when a task finishes, a decision is made, or a fact, command, path, or result is verified that a future session would otherwise have to rediscover.
 ---
 
 # Memory
@@ -12,7 +12,8 @@ Working memory (scratch, drafts, raw research) stays in the session; never save 
 - Decisions and their one-line reason.
 - Verified facts that took real work to find.
 - Reusable results (paths, commands, IDs, configs).
-- Lessons for the core skill go in its **Lessons** section, not here.
+- Token-waste lessons under `## lessons`: `- <pattern> -> <fix>`.
+- The current next step under `## state`: one `- next_action: ...` line, replaced each time.
 
 ## Format
 One line per entry, grouped under a short `## topic` heading:

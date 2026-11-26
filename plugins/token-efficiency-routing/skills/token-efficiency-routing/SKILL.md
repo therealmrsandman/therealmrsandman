@@ -1,6 +1,6 @@
 ---
 name: token-efficiency-routing
-description: Highest priority, core agent skill. Use at the start of every task and whenever spawning, routing to, or receiving output from an agent. Finds the logical starting point, governs context use, model choice, and agent output, and improves itself after each task.
+description: Use when starting any task, deciding what to read or search next, choosing a model or agent for a piece of work, or handing work to or receiving output from an agent.
 ---
 
 # Token Efficiency & Task Routing
@@ -9,36 +9,38 @@ Core skill. Overrides default habits. Applies to the orchestrator and every agen
 **Goal, always:** keep context to the absolute minimum needed to complete the task. Fewer tokens keeps work moving.
 
 Companion skills, loaded only when needed:
-- `memory-recall`: check before any research or file reading.
+- `memory-recall`: check before any research or file reading (matching lines are also injected automatically with each prompt).
 - `memory`: save durable results once a task finishes.
-- `advanced-reasoning`: use for hard decisions only.
+- `advanced-reasoning`: hard decisions only.
 
 ## Starting point
-1. Resume from the last `next_action` or saved state if one exists; don't re-plan.
+1. If `## state` in `.claude/memory.md` has a `next_action`, resume from it; don't re-plan. (It's loaded at session start.)
 2. Otherwise pick the smallest step that produces evidence toward the goal.
 3. Start it immediately. Finish each step with a `next_action` so the next one is obvious.
 
 ## Context
+- Check recalled memory first; skip research it already answers.
 - Search (Grep/Glob) before reading; read only the needed range.
 - Don't reread files or repeat tool calls without a new reason.
 - Load only the relevant section of any doc.
 - Batch similar queries into one call or one parallel turn.
 - Stop researching once evidence is sufficient.
-- Never redo completed research; reuse cached results.
 
-## Routing
-| Task | Model |
-|---|---|
-| Extraction, classification, lookup, formatting | `haiku` |
-| Routine implementation, summaries | `sonnet` |
-| Strategy, hard analysis, final decisions | `opus` |
+## Routing: when spawning agents
+The session's own model is fixed; route by choosing the agent.
 
-Pick the smallest model that can do the job; escalate only on low confidence.
+| Task | Agent | Model |
+|---|---|---|
+| Extraction, classification, lookup, formatting | `extractor` | `haiku` |
+| Routine implementation, edits, summaries | `worker` | `sonnet` |
+| Strategy, hard analysis, final decisions | `reasoner` | `opus` |
+
+Pick the smallest agent that can do the job; escalate only on low confidence or `partial` status.
 
 ## Handoffs
 - Pass a summary, never the full research history.
 - Send only the facts the receiving agent needs.
-- Keep working memory (scratch, per task) separate from permanent memory (durable facts, decisions); persist only the latter.
+- Keep working memory (scratch, per task) separate from permanent memory (`.claude/memory.md`); persist only the latter.
 
 ## Output
 - No progress narration. No long explanations unless asked.
@@ -60,9 +62,6 @@ Never return reasoning chains or research logs to the orchestrator.
 
 ## Self-improvement
 After each task, check: did any step waste tokens, repeat work, or stall on where to start?
-- If yes, add one line to **Lessons** below: the pattern and the fix.
-- Merge duplicates, delete lessons proven wrong, keep at most 15 lines.
-- Edit this file only when a lesson is confirmed; never log routine runs.
-
-## Lessons
-<!-- one line each: pattern -> fix -->
+- If yes, add one line under `## lessons` in `.claude/memory.md`: `- <pattern> -> <fix> (YYYY-MM-DD)`.
+- Merge duplicates, delete lessons proven wrong, keep at most 15.
+- Lessons load at every session start, so each one applies from the next session on.

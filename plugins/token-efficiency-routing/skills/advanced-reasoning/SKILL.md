@@ -1,11 +1,11 @@
 ---
 name: advanced-reasoning
-description: Use only for strategic decisions, difficult analysis, conflicting evidence, or high-cost/irreversible choices. Reasons deeply on a minimal context and returns a compact decision.
+description: Use when facing a strategic choice, conflicting evidence, a hard trade-off, or a costly or irreversible decision.
 ---
 
 # Advanced Reasoning
 
-Use the strongest model (`opus`). Not for lookups, extraction, or routine steps.
+Use the strongest model: if this session isn't running `opus`, send the brief below to the `reasoner` agent. Not for lookups, extraction, or routine steps.
 
 ## Input (keep it minimal)
 - The question, in one sentence.

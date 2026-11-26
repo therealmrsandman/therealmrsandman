@@ -1,9 +1,12 @@
 ---
 name: memory-recall
-description: Use before any research, file reading, or agent handoff. Pulls only the memory lines relevant to the current task so known results are reused instead of rediscovered.
+description: Use when about to research, read files, search the web, or brief an agent on a topic that may have come up in an earlier session.
 ---
 
 # Memory Recall
+
+Matching lines are injected automatically with each prompt. Use this skill mid-task, when a new topic comes up.
+If `.claude/memory.md` doesn't exist, skip recall and proceed.
 
 1. Pick 2-4 keywords from the task.
 2. Grep `.claude/memory.md` for them (case-insensitive). Never read the whole file.
