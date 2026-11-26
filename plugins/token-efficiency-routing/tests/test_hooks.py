@@ -56,4 +56,14 @@ rc2, _ = run("stop.py", {"transcript_path": bad.name}, p)
 rc3, _ = run("stop.py", {"transcript_path": None}, p)
 check("odd input exit 0", (rc1, rc2, rc3) == (0, 0, 0))
 
+# 5. /token-report counts subagent transcripts
+q = project()
+d = tempfile.mkdtemp(); main = os.path.join(d, "sid.jsonl")
+os.makedirs(os.path.join(d, "sid", "subagents"))
+u = lambda i: json.dumps({"message": {"id": i, "usage": {"output_tokens": 100}}}) + "\n"
+open(main, "w").write(u("a")); open(os.path.join(d, "sid", "subagents", "x.jsonl"), "w").write(u("b"))
+json.dump({"last": "sid", "sessions": {"sid": {"transcript": main}}}, open(os.path.join(q, ".claude", "token-efficiency-stats.json"), "w"))
+_, out = run("token_report.py", {}, q)
+check("report includes agent tokens", "| Output tokens | 200 |" in out)
+
 sys.exit(1 if FAIL else 0)
