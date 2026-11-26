@@ -12,7 +12,7 @@ Working memory (scratch, drafts, raw research) stays in the session; never save 
 - Decisions and their one-line reason.
 - Verified facts that took real work to find.
 - Reusable results (paths, commands, IDs, configs).
-- Token-waste lessons under `## lessons`: `- <pattern> -> <fix>`.
+- Token-waste lessons under `## lessons`: `- <pattern> -> <fix> (YYYY-MM-DD)`, at most 15.
 - The current next step under `## state`: one `- next_action: ...` line, replaced each time.
 
 ## Format

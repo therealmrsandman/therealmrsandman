@@ -14,7 +14,7 @@ s = stats.get("sessions", {}).get(sid, {})
 usage, seen = {"input": 0, "cache_write": 0, "cache_read": 0, "output": 0}, set()
 turns = 0
 try:
-    with open(s["transcript"], encoding="utf-8") as f:
+    with open(s["transcript"], encoding="utf-8", errors="replace") as f:
         for raw in f:
             try:
                 msg = (json.loads(raw).get("message") or {})
@@ -29,7 +29,7 @@ try:
             usage["cache_write"] += u.get("cache_creation_input_tokens", 0)
             usage["cache_read"] += u.get("cache_read_input_tokens", 0)
             usage["output"] += u.get("output_tokens", 0)
-except (KeyError, OSError):
+except Exception:
     print("No session data yet. Send a prompt first, then run /token-report again.")
     sys.exit(0)
 

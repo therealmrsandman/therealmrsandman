@@ -5,7 +5,7 @@ description: Use when starting any task, deciding what to read or search next, c
 
 # Token Efficiency & Task Routing
 
-Core skill. Overrides default habits. Applies to the orchestrator and every agent.
+Core skill. Overrides default habits. Applies to this session; the bundled agents carry their own copy of the output rules.
 **Goal, always:** keep context to the absolute minimum needed to complete the task. Fewer tokens keeps work moving.
 
 Companion skills, loaded only when needed:

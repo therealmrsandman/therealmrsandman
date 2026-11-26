@@ -13,7 +13,8 @@ def project_dir(data=None):
 def read_input():
     try:
         import sys
-        return json.load(sys.stdin)
+        data = json.load(sys.stdin)
+        return data if isinstance(data, dict) else {}
     except Exception:
         return {}
 
@@ -24,7 +25,7 @@ def memory_sections(root):
     if not os.path.isfile(path):
         return {}
     sections, heading = {}, ""
-    with open(path, encoding="utf-8", errors="ignore") as f:
+    with open(path, encoding="utf-8", errors="replace") as f:
         for line in f:
             line = line.rstrip("\n")
             if line.startswith("## "):
@@ -43,10 +44,22 @@ def load_stats(root):
         return {"sessions": {}}
 
 
-def save_stats(root, stats):
+def update_stats(root, fn):
+    """Locked read-modify-write of the stats file, replaced atomically."""
     try:
         os.makedirs(os.path.join(root, ".claude"), exist_ok=True)
-        with open(os.path.join(root, STATS_REL), "w", encoding="utf-8") as f:
-            json.dump(stats, f)
+        path = os.path.join(root, STATS_REL)
+        with open(path + ".lock", "w") as lock:
+            try:
+                import fcntl
+                fcntl.flock(lock, fcntl.LOCK_EX)
+            except ImportError:
+                pass  # no locking on Windows; atomic replace still prevents corruption
+            stats = load_stats(root)
+            fn(stats)
+            tmp = f"{path}.{os.getpid()}.tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(stats, f)
+            os.replace(tmp, path)
     except Exception:
         pass

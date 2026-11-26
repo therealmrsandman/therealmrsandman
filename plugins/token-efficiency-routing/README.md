@@ -13,4 +13,6 @@ Keeps Claude's context to the minimum a task needs, and shows you the savings.
 /plugin install token-efficiency-routing@therealmrsandman
 ```
 
-Requires `python3`. Commit `.claude/memory.md` to share memory; add `.claude/token-efficiency-stats.json` to `.gitignore`.
+Requires `python3`. Commit `.claude/memory.md` to share memory; add `.claude/token-efficiency-stats.json*` to `.gitignore`.
+
+Tests: `python3 -B tests/test_hooks.py`
