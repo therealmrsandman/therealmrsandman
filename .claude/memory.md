@@ -6,11 +6,11 @@
 - gh api search/issues needs "is:issue" in q (else HTTP 422) -> include it first try (2026-11-26)
 
 - Synced plugins disable as "<name>@synced": false in enabledPlugins; claude-code-guide lookup cost 125k tokens -> reuse this, no re-lookup (2026-11-26)
-- dispatching-parallel-agents invoked with no problem list -> ask user for named independent failures before dispatch; do not spawn blind (2026-11-26)
+- Planning or dispatch skills invoked with no work named -> ask for the spec or problem list before writing anything; do not guess scope (2026-11-26)
 ## state
 - PR #12 merged (deaea3e); main merged into branch (f70b6bf); draft PR #13 open for memory follow-up.
 - Disabled 11 unused synced plugins via "<name>@synced": false in .claude/settings.json (effective next session; verify skill list shrank).
 - Diagnosis workspace: /root/.superpowers/diagnosing-superpowers/4bcb0feb-9293-5326-bb0a-da70bf496648/ — report.md written (§7 likely); issue search done (closest obra/superpowers #2096, #2034, #2710); next: user picks comment-on-existing vs new issue draft.
 - Productivity memory bootstrap awaits where todos live.
 - PR #13 (draft): mergeable clean, no CI check runs, no review threads at 2026-11-26; PR check-ins stopped, next GitHub event or user message resumes.
-- Next: user names independent problems for parallel dispatch, or supplies diagnosis summary + naming; no work started.
+- Next: user names the feature or spec to plan, or the parallel problems, or supplies the diagnosis summary; no work started.
