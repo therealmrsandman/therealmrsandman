@@ -2,10 +2,11 @@
   "name": "therealmrsandman",
   "owner": { "name": "therealmrsandman" },
   "plugins": [
+    { "name": "token-meter", "source": "./token-meter" },
     {
       "name": "token-efficiency-routing",
       "source": "./plugins/token-efficiency-routing",
-      "description": "Highest-priority rules for lean context use, model routing, and compact structured agent output."
+      "description": "Keeps context to the minimum a task needs: auto memory recall, model-routed agents, and /token-report."
     }
   ]
 }

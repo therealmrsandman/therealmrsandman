@@ -1,0 +1,20 @@
+{
+  "name": "token-meter",
+  "version": "0.1.0",
+  "description": "A one-line meter above the prompt: context fill, tokens, cost and rate limits, with nudges to /compact or /clear.",
+  "author": {
+    "name": "therealmrsandman",
+    "url": "https://github.com/therealmrsandman"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "autoCompactAt": {
+      "type": "number",
+      "title": "Auto-compact at context %",
+      "description": "Run /compact automatically before your next prompt once context reaches this %. 0 turns it off (the default): you only get nudges.",
+      "default": 0,
+      "min": 0,
+      "max": 95
+    }
+  }
+}

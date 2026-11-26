@@ -1,7 +1,5 @@
 
-## Plugins
-
-### token-efficiency-routing
+# token-efficiency-routing
 Keeps Claude's context to the minimum a task needs, and shows you the savings.
 
 - **Always on:** core rules, your saved next step and lessons load at every session start.
