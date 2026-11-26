@@ -64,6 +64,20 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // /clear ends the conversation without a session.start or a fresh measure,
+  // so zero the meter here rather than showing pre-clear usage until next turn.
+  on('session.end', async ($, e, next) => {
+    if (e.reason === 'clear') {
+      const prev = await read($, reading)
+      if (prev) {
+        await update($, reading, () => ({ ...prev, tokens: 0, percent: 0, usd: null, turnDelta: 0 }))
+      }
+      await update($, warned, () => 0)
+      $.ui.status(prev ? `ctx 0% · 0` : undefined)
+    }
+    return next(e)
+  })
+
   on('command.run', { name: 'meter' }, async ($, e, next) => {
     const hidden = await update($, isHidden, v => !v)
     return { text: hidden ? 'Token meter hidden. Run /meter again to show it.' : 'Token meter shown.' }
