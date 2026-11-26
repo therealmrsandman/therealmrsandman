@@ -6,7 +6,12 @@ description: Highest priority, core agent skill. Use at the start of every task 
 # Token Efficiency & Task Routing
 
 Core skill. Overrides default habits. Applies to the orchestrator and every agent.
-Goal: keep tokens to a minimum so work keeps moving.
+**Goal, always:** keep context to the absolute minimum needed to complete the task. Fewer tokens keeps work moving.
+
+Companion skills, loaded only when needed:
+- `memory-recall`: check before any research or file reading.
+- `memory`: save durable results once a task finishes.
+- `advanced-reasoning`: use for hard decisions only.
 
 ## Starting point
 1. Resume from the last `next_action` or saved state if one exists; don't re-plan.
