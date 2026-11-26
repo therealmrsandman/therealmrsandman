@@ -314,3 +314,16 @@ test('/meter budget accepts $0 as off and commas in amounts', async ($, on) => {
   expect((await $.command.run({ ...METER, args: 'budget 1,000,000' })).text).toContain('1000k tokens')
   expect((await $.command.run({ ...METER, args: 'budget $0' })).text).toMatch(/cleared/i)
 })
+
+test('/clear re-arms auto-compaction', { options: { autoCompactAt: 70 } }, async ($, on) => {
+  const compacts: string[] = []
+  autoCompactHarness(on, compacts)
+  on('session.end', (_, e) => ({ sessionId: e.sessionId }))
+  await $.session.measure({ ...usage(164_000), changed: ['context'] }) // 82%
+  await $.turn.complete(done('a'))
+  expect(compacts).toHaveLength(1)
+  await $.session.end({ reason: 'clear', sessionId: 's1', resume: { id: 's1' } })
+  await $.session.measure({ ...usage(150_000), changed: ['context'] }) // 75% on the first turn after /clear
+  await $.turn.complete(done('b'))
+  expect(compacts).toHaveLength(2)
+})

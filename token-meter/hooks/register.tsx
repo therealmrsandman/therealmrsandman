@@ -235,6 +235,7 @@ export const register: Register = (on, options) => {
       }
       await update($, warned, () => 0)
       await update($, tools, () => [])
+      await update($, autoCompacted, () => false) // a fresh conversation re-arms auto-compaction
       $.ui.status(prev ? `ctx 0% · 0` : undefined)
     }
     return next(e)
