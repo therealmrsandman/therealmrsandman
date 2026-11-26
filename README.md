@@ -16,3 +16,13 @@ Here are some ideas to get you started:
 - 😄 Pronouns: ...
 - ⚡ Fun fact: ...
 -->
+
+## Plugins
+
+### token-efficiency-routing
+Highest-priority skill for lean context use, model routing, and compact agent output.
+
+```bash
+/plugin marketplace add therealmrsandman/therealmrsandman
+/plugin install token-efficiency-routing@therealmrsandman
+```

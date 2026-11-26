@@ -1,0 +1,11 @@
+{
+  "name": "therealmrsandman",
+  "owner": { "name": "therealmrsandman" },
+  "plugins": [
+    {
+      "name": "token-efficiency-routing",
+      "source": "./plugins/token-efficiency-routing",
+      "description": "Highest-priority rules for lean context use, model routing, and compact structured agent output."
+    }
+  ]
+}
