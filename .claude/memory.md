@@ -1,6 +1,7 @@
 # Memory
 
 ## lessons
+- plugins/token-efficiency-routing/tests/test_hooks.py is a script that calls sys.exit at import: pytest gives INTERNALERROR; run with python3 tests/test_hooks.py (2026-11-26)
 - Synthetic 20-item test too easy to separate models; use harder, ambiguous items and more reps before ranking (2026-11-26)
 - Session 4bcb0feb: 116 main calls all on opus, avg context 142k, 15.8M cache-read tokens; only 1 subagent (opus, explicit model). Delegate to haiku/sonnet.
 - .claude/token-efficiency-stats.json(.lock) are plugin runtime files: gitignored, never commit.
@@ -13,7 +14,7 @@
 - Text-only subagents sometimes end with no SubagentHandback; resend via SendMessage costs another run. Make the prompt demand the exact output lines first (2026-11-26)
 - Inline text-only subagent prompts for pressure tests ended without reports; file-based scenario (read file, write answer file) worked (2026-11-26)
 - Pressure-test prompts not saved to disk can't be rerun exactly -> save every scenario file in the scratchpad at creation (2026-11-26)
-## state
+## lessons
 - PR #12 merged (deaea3e); main merged into branch (f70b6bf); draft PR #13 open for memory follow-up.
 - Disabled 11 unused synced plugins via "<name>@synced": false in .claude/settings.json (effective next session; verify skill list shrank).
 - Diagnosis workspace: /root/.superpowers/diagnosing-superpowers/4bcb0feb-9293-5326-bb0a-da70bf496648/ — report.md written (§7 likely); issue search done (closest obra/superpowers #2096, #2034, #2710); next: user picks comment-on-existing vs new issue draft.
