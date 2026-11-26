@@ -1,5 +1,16 @@
 {
   "env": {
     "CLAUDE_CODE_SUBAGENT_MODEL": "haiku"
+  },
+  "extraKnownMarketplaces": {
+    "therealmrsandman": {
+      "source": {
+        "source": "github",
+        "repo": "therealmrsandman/therealmrsandman"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "token-efficiency-routing@therealmrsandman": true
   }
 }
