@@ -1,2 +1,4 @@
 __pycache__/
 *.pyc
+.claude/token-efficiency-stats.json
+.claude/token-efficiency-stats.json.lock
