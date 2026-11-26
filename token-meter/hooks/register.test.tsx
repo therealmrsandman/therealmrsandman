@@ -1,4 +1,4 @@
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
 const BAND = {
   plugin: 'token-meter',
@@ -114,4 +114,52 @@ test('the band names the three biggest tool calls of the last turn', async ($, o
   const ui2 = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect((await ui2.find({ type: 'Text', text: /ctx/ }))?.text).not.toContain('top:')
   await ui2.unmount()
+})
+
+const budgetRun = (args: string) => ({ ...METER, args })
+
+test('/meter budget $ turns the bar red and toasts at 80% and 100%', async ($, on) => {
+  const toasts: string[] = []
+  mock.store(on)
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+
+  expect((await $.command.run(budgetRun('budget $2'))).text).toContain('$2.00')
+  await $.session.measure({ ...usage(10_000, 1.0), changed: ['context'] })
+  expect(toasts.filter(t => /budget/i.test(t))).toHaveLength(0)
+
+  await $.session.measure({ ...usage(12_000, 1.7), changed: ['context'] })
+  expect(toasts.filter(t => /budget/i.test(t))).toEqual([expect.stringContaining('80%')])
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  const pct = await ui.find({ type: 'Text', text: /6%/ })
+  expect(pct?.props.color).toBe('red')
+  expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).toContain('budget 85% of $2.00')
+  await ui.unmount()
+
+  await $.session.measure({ ...usage(13_000, 2.1), changed: ['context'] })
+  await $.session.measure({ ...usage(14_000, 2.2), changed: ['context'] })
+  expect(toasts.filter(t => /budget/i.test(t))).toHaveLength(2)
+  expect(toasts.at(-1)).toContain('100%')
+})
+
+test('a token budget counts context added this session and is read back from the store', async ($, on) => {
+  const toasts: string[] = []
+  mock.store(on, { budget: { kind: 'tokens', limit: 50_000 } })
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('session.usage', () => ({ value: { startedAt: 0, ...usage(10_000) } }))
+  on('command.register', () => ({ value: { command: 'meter' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.session.measure({ ...usage(35_000), changed: ['context'] }) // +25k = 50%
+  await $.session.measure({ ...usage(52_000), changed: ['context'] }) // +42k = 84%
+  expect(toasts.find(t => /budget/i.test(t))).toContain('80%')
+  expect((await $.command.run(budgetRun('budget off'))).text).toMatch(/cleared/i)
 })

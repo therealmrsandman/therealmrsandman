@@ -7,12 +7,19 @@ import type {
   SessionRateLimit,
 } from 'claude-code'
 
-import type { Reading, ToolCost } from '../types'
+import type { Budget, Reading, ToolCost } from '../types'
 
 const reading = atom({ plugin: 'token-meter', key: 'reading' } as const, null)
 const warned = atom({ plugin: 'token-meter', key: 'warned' } as const, 0)
 const isHidden = atom({ plugin: 'token-meter', key: 'isHidden' } as const, false)
 const tools = atom({ plugin: 'token-meter', key: 'tools' } as const, [] as ToolCost[])
+const budget = atom({ plugin: 'token-meter', key: 'budget' } as const, null as Budget | null)
+const budgetWarned = atom({ plugin: 'token-meter', key: 'budgetWarned' } as const, 0)
+// Context tokens added this session: the sum of each turn's growth.
+const spent = atom({ plugin: 'token-meter', key: 'spent' } as const, 0)
+
+// Budget levels (%) that fire a one-time toast.
+const BUDGET_LEVELS = [80, 100]
 
 // One turn adding more than this share of the window fires a spike toast.
 const SPIKE = 0.15
@@ -28,6 +35,34 @@ const bar = (pct: number, width = 10) => {
   const filled = Math.max(0, Math.min(width, Math.round((pct / 100) * width)))
   return '█'.repeat(filled) + '░'.repeat(width - filled)
 }
+
+const money = (n: number) => `$${n.toFixed(2)}`
+const fmtBudget = (b: Budget) => (b.kind === 'usd' ? money(b.limit) : `${k(b.limit)} tokens`)
+
+const budgetPct = (b: Budget, r: Reading, used: number) =>
+  Math.round(((b.kind === 'usd' ? (r.usd ?? 0) : used) / b.limit) * 100)
+
+// "$5", "5$", "2.50$" are dollars; "200000", "200k", "1.5m" are tokens.
+const parseBudget = (raw: string): Budget | 'off' | null => {
+  const s = raw.trim().toLowerCase()
+  if (['off', 'clear', 'none', '0'].includes(s)) return 'off'
+  const usd = /^\$\s*(\d+(?:\.\d+)?)$|^(\d+(?:\.\d+)?)\s*\$$/.exec(s)
+  if (usd) {
+    const n = Number(usd[1] ?? usd[2])
+    return n > 0 ? { kind: 'usd', limit: n } : null
+  }
+  const tok = /^(\d+(?:\.\d+)?)\s*([km]?)$/.exec(s)
+  if (!tok) return null
+  const n = Math.round(Number(tok[1]) * (tok[2] === 'k' ? 1e3 : tok[2] === 'm' ? 1e6 : 1))
+  return n > 0 ? { kind: 'tokens', limit: n } : null
+}
+
+const isBudget = (v: unknown): v is Budget =>
+  !!v &&
+  typeof v === 'object' &&
+  ((v as Budget).kind === 'usd' || (v as Budget).kind === 'tokens') &&
+  typeof (v as Budget).limit === 'number' &&
+  (v as Budget).limit > 0
 
 const colorFor = (pct: number) => (pct >= 85 ? 'red' : pct >= 60 ? 'yellow' : 'green')
 
@@ -57,6 +92,21 @@ async function measure($: EngineInterface, u: Usage) {
   }
   await update($, reading, () => next)
 
+  const used = await update($, spent, n => n + Math.max(0, next.turnDelta))
+  const b = await read($, budget)
+  if (b) {
+    const pct = budgetPct(b, next, used)
+    const level = BUDGET_LEVELS.filter(l => pct >= l).pop() ?? 0
+    if (level > (await read($, budgetWarned))) {
+      await update($, budgetWarned, () => level)
+      $.ui.toast(
+        level >= 100
+          ? `Budget reached: 100% of ${fmtBudget(b)} used. Wrap up or /clear; /meter budget off to dismiss.`
+          : `Budget at ${level}% of ${fmtBudget(b)}. /compact or narrower reads will stretch it.`,
+      )
+    }
+  }
+
   if (next.window > 0 && next.turnDelta > next.window * SPIKE) {
     const top = (await read($, tools))[0]
     $.ui.toast(
@@ -75,8 +125,13 @@ async function measure($: EngineInterface, u: Usage) {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
+    const saved = await $.store.get('budget').catch(() => undefined) // a missing store must not stop the meter
+    if (isBudget(saved)) await update($, budget, () => saved)
     await measure($, await $.session.usage()) // plain call: free, no API request
-    await $.command.register({ name: 'meter', description: 'Show or hide the token meter bar' })
+    await $.command.register({
+      name: 'meter',
+      description: 'Show/hide the token meter; budget <tokens|$>|off',
+    })
     return next(e)
   })
 
@@ -115,7 +170,26 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('command.run', { command: 'meter' }, async $ => {
+  on('command.run', { command: 'meter' }, async ($, e) => {
+    const [sub, ...rest] = e.args.trim().split(/\s+/)
+    if (sub === 'budget') {
+      const arg = rest.join(' ')
+      if (!arg) {
+        const b = await read($, budget)
+        return { text: b ? `Budget: ${fmtBudget(b)}.` : 'No budget set. Try /meter budget $5 or /meter budget 500k.' }
+      }
+      const b = parseBudget(arg)
+      if (b === null) return { text: `Could not read "${arg}". Try /meter budget $5 or /meter budget 500k.` }
+      await update($, budgetWarned, () => 0)
+      if (b === 'off') {
+        await update($, budget, () => null)
+        await $.store.delete('budget')
+        return { text: 'Budget cleared.' }
+      }
+      await update($, budget, () => b)
+      await $.store.set('budget', b)
+      return { text: `Budget set: ${fmtBudget(b)} for this session (saved as the default for new ones).` }
+    }
     const hidden = await update($, isHidden, v => !v)
     return { text: hidden ? 'Token meter hidden. Run /meter again to show it.' : 'Token meter shown.' }
   })
@@ -125,17 +199,21 @@ export const register: Register = on => {
     if (e.props.hasSurvey || r === null || (await read($, isHidden))) return next(e)
 
     const top = await read($, tools)
+    const b = await read($, budget)
+    const bPct = b ? budgetPct(b, r, await read($, spent)) : 0
+    const color = b && bPct >= 80 ? 'red' : colorFor(r.percent)
     const { Box, Text } = $.ui.resolve(e)
 
     return (
       <Box flexDirection="row">
-        <Text color={colorFor(r.percent)}>
+        <Text color={color}>
           {bar(r.percent)} {r.percent}%
         </Text>
         <Text dimColor>
           {'  '}ctx {k(r.tokens)}/{k(r.window)}
           {r.turnDelta > 0 ? `  +${k(r.turnDelta)} last turn` : ''}
           {r.usd !== null ? `  ~$${r.usd.toFixed(2)} est.` : ''}
+          {b ? `  budget ${bPct}% of ${fmtBudget(b)}` : ''}
           {top.length ? `  top: ${top.map(t => `${t.name} ${k(t.tokens)}`).join(', ')}` : ''}
           {r.limit ? `  ${r.limit.kind.replace(/_/g, '-')} limit ${Math.round(r.limit.percentUsed)}%` : ''}
         </Text>
