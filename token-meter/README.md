@@ -17,6 +17,7 @@ It adds one line above the prompt:
 
 At 50%, 70% and 85% it shows a one-time toast suggesting `/compact` or `/clear`, the two biggest token savers.
 Type `/meter` to hide or show the bar. It makes no model calls, so it costs no tokens.
+It also bundles a `token-thrift` skill that keeps Claude's own replies and searches lean and tells you when to `/compact` or `/clear`.
 
 ## Install
 
