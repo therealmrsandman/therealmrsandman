@@ -7,7 +7,7 @@ import type {
   SessionRateLimit,
 } from 'claude-code'
 
-import type { Budget, Reading, ToolCost } from '../types'
+import type { Budget, Reading, Stats, ToolCost } from '../types'
 
 const reading = atom({ plugin: 'token-meter', key: 'reading' } as const, null)
 const warned = atom({ plugin: 'token-meter', key: 'warned' } as const, 0)
@@ -17,6 +17,8 @@ const budget = atom({ plugin: 'token-meter', key: 'budget' } as const, null as B
 const budgetWarned = atom({ plugin: 'token-meter', key: 'budgetWarned' } as const, 0)
 // Context tokens added this session: the sum of each turn's growth.
 const spent = atom({ plugin: 'token-meter', key: 'spent' } as const, 0)
+const EMPTY_STATS: Stats = { peakPercent: 0, peakTokens: 0, compactions: 0, turns: [] }
+const stats = atom({ plugin: 'token-meter', key: 'stats' } as const, EMPTY_STATS)
 
 // Budget levels (%) that fire a one-time toast.
 const BUDGET_LEVELS = [80, 100]
@@ -92,6 +94,19 @@ async function measure($: EngineInterface, u: Usage) {
   }
   await update($, reading, () => next)
 
+  const biggest = (await read($, tools))[0]
+  await update($, stats, st => ({
+    ...st,
+    peakPercent: Math.max(st.peakPercent, percent),
+    peakTokens: Math.max(st.peakTokens, tokens),
+    turns:
+      next.turnDelta > 0
+        ? [...st.turns, { delta: next.turnDelta, ...(biggest ? { tool: biggest.name } : {}) }]
+            .sort((a, b) => b.delta - a.delta)
+            .slice(0, 3)
+        : st.turns,
+  }))
+
   const used = await update($, spent, n => n + Math.max(0, next.turnDelta))
   const b = await read($, budget)
   if (b) {
@@ -123,6 +138,24 @@ async function measure($: EngineInterface, u: Usage) {
   $.ui.status(`ctx ${percent}% · ${k(tokens)}`)
 }
 
+// A short, copy-pasteable summary of the session.
+async function report($: EngineInterface) {
+  const r = await read($, reading)
+  const st = await read($, stats)
+  const b = await read($, budget)
+  const window = r?.window ?? 0
+  const lines = [
+    'Token meter report',
+    `Peak context: ${st.peakPercent}% (${k(st.peakTokens)}/${k(window)})`,
+    `Now: ${r?.percent ?? 0}% (${k(r?.tokens ?? 0)}/${k(window)})`,
+    `Est. cost: ${r?.usd != null ? money(r.usd) : 'n/a'}`,
+    `Compactions: ${st.compactions}`,
+    `Biggest turns: ${st.turns.length ? st.turns.map(t => `+${k(t.delta)}${t.tool ? ` (${t.tool})` : ''}`).join(', ') : 'none yet'}`,
+  ]
+  if (b) lines.push(`Budget: ${budgetPct(b, r ?? { tokens: 0, window, percent: 0, usd: null, limit: null, turnDelta: 0 }, await read($, spent))}% of ${fmtBudget(b)}`)
+  return lines.join('\n')
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const saved = await $.store.get('budget').catch(() => undefined) // a missing store must not stop the meter
@@ -130,7 +163,7 @@ export const register: Register = on => {
     await measure($, await $.session.usage()) // plain call: free, no API request
     await $.command.register({
       name: 'meter',
-      description: 'Show/hide the token meter; budget <tokens|$>|off',
+      description: 'Show/hide the token meter; report; budget <tokens|$>|off',
     })
     return next(e)
   })
@@ -146,6 +179,15 @@ export const register: Register = on => {
     if (e.agentId === undefined && typeof r.text === 'string') {
       const cost = { name: e.tool, tokens: Math.round(r.text.length / CHARS_PER_TOKEN) }
       await update($, tools, list => [...list, cost].sort((a, b) => b.tokens - a.tokens).slice(0, 3))
+    }
+    return r
+  })
+
+  // Count compactions that happened (not skipped, not precomputed) in the main loop.
+  on('session.compact', async ($, e, next) => {
+    const r = await next(e)
+    if (e.agentId === undefined && e.trigger !== 'precompute' && 'messages' in r) {
+      await update($, stats, st => ({ ...st, compactions: st.compactions + 1 }))
     }
     return r
   })
@@ -172,6 +214,7 @@ export const register: Register = on => {
 
   on('command.run', { command: 'meter' }, async ($, e) => {
     const [sub, ...rest] = e.args.trim().split(/\s+/)
+    if (sub === 'report') return { text: await report($) }
     if (sub === 'budget') {
       const arg = rest.join(' ')
       if (!arg) {

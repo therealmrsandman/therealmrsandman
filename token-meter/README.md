@@ -19,6 +19,7 @@ It adds one line above the prompt:
 At 50%, 70% and 85% it shows a one-time toast suggesting `/compact` or `/clear`, the two biggest token savers.
 **Spike alert:** when a single turn adds more than 15% of the window, a toast names the jump and the biggest tool call behind it.
 **Budget:** `/meter budget $5` (dollars, by est. cost) or `/meter budget 500k` (context tokens added this session) sets a ceiling. The band shows `budget N% of …`, the bar turns red from 80%, and a toast fires once at 80% and once at 100%. The budget is saved in the plugin's store and applies to new sessions too; `/meter budget off` clears it, `/meter budget` shows it.
+**Report:** `/meter report` prints a short, copy-pasteable summary: peak context, context now, est. cost, number of compactions, the three biggest turns (with the tool behind each), and budget use if one is set.
 Type `/meter` to hide or show the bar. It makes no model calls, so it costs no tokens.
 It also bundles a `token-thrift` skill that keeps Claude's own replies and searches lean and tells you when to `/compact` or `/clear`.
 

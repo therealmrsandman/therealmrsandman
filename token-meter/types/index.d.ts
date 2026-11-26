@@ -2,6 +2,10 @@ export type ToolCost = { name: string; tokens: number }
 
 export type Budget = { kind: 'tokens' | 'usd'; limit: number }
 
+export type Turn = { delta: number; tool?: string }
+
+export type Stats = { peakPercent: number; peakTokens: number; compactions: number; turns: Turn[] }
+
 export type Reading = {
   tokens: number
   window: number
@@ -18,6 +22,7 @@ declare module 'claude-code' {
       budget: Budget | null
       budgetWarned: number
       spent: number
+      stats: Stats
     }
   }
 }

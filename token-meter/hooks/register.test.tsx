@@ -163,3 +163,22 @@ test('a token budget counts context added this session and is read back from the
   expect(toasts.find(t => /budget/i.test(t))).toContain('80%')
   expect((await $.command.run(budgetRun('budget off'))).text).toMatch(/cleared/i)
 })
+
+test('/meter report summarizes peak, cost, compactions and biggest turns', async ($, on) => {
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('session.compact', () => ({ messages: [{ role: 'user', text: 'summary', toolUses: [] }] }))
+
+  await $.session.measure({ ...usage(20_000, 0.2), changed: ['context'] })
+  await $.session.measure({ ...usage(80_000, 0.6), changed: ['context'] }) // +60k
+  await $.session.measure({ ...usage(90_000, 0.9), changed: ['context'] }) // +10k
+  await $.session.compact({ trigger: 'plugin', messages: [{ role: 'user', text: 'hi', toolUses: [] }] })
+  await $.session.measure({ ...usage(15_000, 1.0), changed: ['context'] })
+  await $.session.measure({ ...usage(40_000, 1.25), changed: ['context'] }) // +25k
+
+  const text = (await $.command.run({ ...METER, args: 'report' })).text ?? ''
+  expect(text).toContain('Peak context: 45% (90k/200k)')
+  expect(text).toContain('Est. cost: $1.25')
+  expect(text).toContain('Compactions: 1')
+  expect(text).toContain('Biggest turns: +60k, +25k, +10k')
+  expect(text.split('\n').length).toBeLessThanOrEqual(8)
+})
