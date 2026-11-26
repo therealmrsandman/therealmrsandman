@@ -180,7 +180,7 @@ async function report($: EngineInterface) {
 }
 
 export const register: Register = (on, options) => {
-  const raw = Number(options.autoCompactAt ?? 80)
+  const raw = Number(options.autoCompactAt ?? 0) // off by default: nudges only
   const autoAt = Number.isFinite(raw) && raw > 0 ? Math.min(raw, 95) : 0
 
   // Opt-in: once a main-loop turn has finished, compact if the context passed the threshold.

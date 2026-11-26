@@ -11,8 +11,8 @@
     "autoCompactAt": {
       "type": "number",
       "title": "Auto-compact at context %",
-      "description": "Run a compaction automatically after a turn ends with context at or above this %. Default 80. 0 turns it off: you only get nudges.",
-      "default": 80,
+      "description": "Run a compaction automatically after a turn ends with context at or above this %. Off by default (0): you only get nudges. Set e.g. 80 to turn it on.",
+      "default": 0,
       "min": 0,
       "max": 95
     }

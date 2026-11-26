@@ -223,15 +223,12 @@ const autoCompactHarness = (on: On, compacts: string[], toasts: string[] = []) =
   })
 }
 
-test('auto-compaction defaults to 80%', async ($, on) => {
+test('auto-compaction is off by default: context past 80% only gets nudges', async ($, on) => {
   const compacts: string[] = []
   autoCompactHarness(on, compacts)
-  await $.session.measure({ ...usage(150_000), changed: ['context'] }) // 75%
+  await $.session.measure({ ...usage(164_000), changed: ['context'] }) // 82%
   await $.turn.complete(done('a'))
   expect(compacts).toEqual([])
-  await $.session.measure({ ...usage(164_000), changed: ['context'] }) // 82%
-  await $.turn.complete(done('b'))
-  expect(compacts).toHaveLength(1)
 })
 
 test('autoCompactAt 0 turns auto-compaction off', { options: { autoCompactAt: 0 } }, async ($, on) => {
