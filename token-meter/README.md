@@ -42,3 +42,11 @@ claude plugin install token-meter --marketplace therealmrsandman/therealmrsandma
 In the desktop app: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `therealmrsandman/therealmrsandman`, then **Add plugin**.
 
 Answer `y` to add the marketplace, then pick a scope (user scope = every session).
+
+## Icon
+
+Placeholder: no icon yet. Before submitting to the plugin directory, add a square PNG (512–2048 px, under 2 MB) at `.claude-plugin/icon.png`. The directory takes the icon only on the first submission, so add it before that.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
