@@ -12,7 +12,7 @@ It adds one line above the prompt:
 - **ctx**: tokens in use / window size.
 - **+N last turn**: how much your last message grew the context, so expensive turns stand out.
 - **~$ est.**: estimated session cost (an estimate, not your bill).
-- **top:**: the three tool calls whose results were biggest in the current turn (≈ chars ÷ 4), so you can see what to read in smaller ranges.
+- **top:** the three tool calls whose results were biggest in the current turn (≈ chars ÷ 4), so you can see what to read in smaller ranges.
 - **limit**: your fullest rate-limit window (five-hour or seven-day).
 - A short `ctx 48% · 96k` entry in the status line.
 
