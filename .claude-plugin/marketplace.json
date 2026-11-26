@@ -2,5 +2,12 @@
   "name": "therealmrsandman",
   "owner": { "name": "therealmrsandman" },
   "description": "token-meter: keeps Claude Code token use in view and low.",
-  "plugins": [{ "name": "token-meter", "source": "./token-meter" }]
+  "plugins": [
+    { "name": "token-meter", "source": "./token-meter" },
+    {
+      "name": "token-efficiency-routing",
+      "source": "./plugins/token-efficiency-routing",
+      "description": "Keeps context to the minimum a task needs: auto memory recall, model-routed agents, and /token-report."
+    }
+  ]
 }
