@@ -45,7 +45,7 @@ Answer `y` to add the marketplace, then pick a scope (user scope = every session
 
 ## Icon
 
-Placeholder: no icon yet. Before submitting to the plugin directory, add a square PNG (512–2048 px, under 2 MB) at `.claude-plugin/icon.png`. The directory takes the icon only on the first submission, so add it before that.
+`.claude-plugin/icon.png` is a placeholder (512 px, a meter bar on a dark tile). Replace it with the final square PNG (512–2048 px, under 2 MB) before submitting to the plugin directory: the directory takes the icon only on the first submission, so a later change won't update the listing.
 
 ## License
 
