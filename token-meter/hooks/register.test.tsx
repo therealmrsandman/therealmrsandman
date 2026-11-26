@@ -182,3 +182,25 @@ test('/meter report summarizes peak, cost, compactions and biggest turns', async
   expect(text).toContain('Biggest turns: +60k, +25k, +10k')
   expect(text.split('\n').length).toBeLessThanOrEqual(8)
 })
+
+test('the band draws as one row on terminal, desktop, vscode and mobile', async ($, on) => {
+  mock.store(on, { budget: { kind: 'usd', limit: 5 } })
+  on('session.usage', () => ({ value: { startedAt: 0, ...usage(40_000) } }))
+  on('command.register', () => ({ value: { command: 'meter' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+
+  for (const surface of ['terminal', 'desktop', 'vscode', 'mobile'] as const) {
+    await $.session.start({ cwd: '/', surface, isInteractive: true })
+    await $.session.measure({ ...usage(96_000, 0.84), changed: ['context'] })
+    const ui = await $.ui.mount({ ...BAND, surface })
+    const row = await ui.find({ type: 'Box' })
+    expect(row?.props.flexDirection).toBe('row')
+    expect((await ui.find({ type: 'Text', text: /48%/ }))?.text).toContain('48%')
+    const detail = (await ui.find({ type: 'Text', text: /ctx/ }))?.text ?? ''
+    expect(detail).toContain('ctx 96k/200k')
+    expect(detail).toContain('budget 17% of $5.00')
+    expect(detail).not.toContain('\n')
+    await ui.unmount()
+  }
+})
