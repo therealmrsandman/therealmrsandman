@@ -11,7 +11,7 @@
     "autoCompactAt": {
       "type": "number",
       "title": "Auto-compact at context %",
-      "description": "Run /compact automatically before your next prompt once context reaches this %. 0 turns it off (the default): you only get nudges.",
+      "description": "Run a compaction automatically after a turn ends with context at or above this %. Off by default (0): you only get nudges. Set e.g. 80 to turn it on.",
       "default": 0,
       "min": 0,
       "max": 95

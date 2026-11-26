@@ -13,6 +13,8 @@ export type Reading = {
   usd: number | null
   limit: { kind: string; percentUsed: number } | null
   turnDelta: number
+  // Set by /clear and compaction: the next reading is a fresh base, not a turn's growth.
+  rebase?: boolean
 }
 
 declare module 'claude-code' {
