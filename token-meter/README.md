@@ -23,7 +23,7 @@ At 50%, 70% and 85% it shows a one-time toast suggesting `/compact` or `/clear`,
 **Surfaces:** the band is one row and is tested on the terminal, desktop app, VS Code and mobile app.
 **Auto-compaction (off by default):** set the plugin option `autoCompactAt` (in `/config`, or `pluginConfigs["token-meter"].options.autoCompactAt` in settings.json) to a context % such as `75`. After a turn ends with context at or above it, token-meter runs a compaction for you (once per crossing) and toasts that it did. `0` keeps it off: you only get the nudges.
 Type `/meter` to hide or show the bar. It makes no model calls, so it costs no tokens.
-It also bundles a `token-thrift` skill that keeps Claude's own replies and searches lean and tells you when to `/compact` or `/clear`.
+It also bundles a `token-thrift` skill that keeps Claude's own replies, searches and noisy command output (test runs, builds, CI logs) lean and tells you when to `/compact` or `/clear`.
 
 ## Install
 

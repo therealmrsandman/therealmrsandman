@@ -22,6 +22,15 @@ Do the work anyway (the user decides), then open your final message with that li
 
 The first command is a filtered search for the thing asked about: `grep -rn PATTERN | head -20`, or Grep/Glob. Read only the matching line range (`sed -n 140,165p`). No directory or file listings unless the question is about structure.
 
+## Noisy commands recipe
+
+Test runners, builds, linters, installs and CI logs (`gh run view --log-failed`) end in a filter, so only the verdict enters context:
+
+- Failures: `<cmd> 2>&1 | grep -E 'FAIL|✕|Error|error TS' | head -30`
+- Summary: `<cmd> 2>&1 | tail -25`
+
+Order: the failing test file(s) by path first, filtered; then the wider suite once, piped to `tail -25` for its summary line. Re-run unfiltered only the single test whose filtered output was not enough.
+
 ## Reply shape
 
 1. The answer or result (value, file:line, what changed).
@@ -35,6 +44,7 @@ The reply is these parts and ends after them. What you searched or double-checke
 | Situation | Thrifty move |
 |---|---|
 | Find a setting/symbol | Filtered grep first, then a line range |
+| Run tests / build / CI log | Pipe to `grep … \| head -30` or `tail -25` |
 | Context 70%+, mid-task | One line: suggest `/compact` |
 | Unrelated request, context 50%+ | One line: suggest `/clear` |
 | Writing code or SQL | One version, the likeliest dialect; ask instead of listing variants |
