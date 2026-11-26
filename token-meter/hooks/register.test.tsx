@@ -1,3 +1,4 @@
+import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 
 const BAND = {
@@ -203,4 +204,39 @@ test('the band draws as one row on terminal, desktop, vscode and mobile', async 
     expect(detail).not.toContain('\n')
     await ui.unmount()
   }
+})
+
+const done = (turnId: string) =>
+  ({ answer: 'ok', durationMs: 1, isAborted: false, turnId, reason: 'answer' }) as const
+
+const autoCompactHarness = (on: On, compacts: string[]) => {
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('turn.complete', (_, e) => ({ text: e.answer }))
+  on('session.messages', () => ({ value: [{ role: 'user', text: 'hi', toolUses: [] }] }) as never)
+  on('session.compact', (_, e) => {
+    compacts.push(e.instructions ? 'compact' : 'compact (no instructions)')
+    return { messages: [{ role: 'user', text: 'summary', toolUses: [] }] }
+  })
+  on('ui.toast', () => ({ value: undefined }))
+}
+
+test('auto-compaction is off by default', async ($, on) => {
+  const compacts: string[] = []
+  autoCompactHarness(on, compacts)
+  await $.session.measure({ ...usage(180_000), changed: ['context'] })
+  await $.turn.complete(done('next'))
+  expect(compacts).toEqual([])
+})
+
+test('autoCompactAt compacts after the turn once the context passes it', { options: { autoCompactAt: 70 } }, async ($, on) => {
+  const compacts: string[] = []
+  autoCompactHarness(on, compacts)
+  await $.session.measure({ ...usage(120_000), changed: ['context'] }) // 60%
+  await $.turn.complete(done('a'))
+  expect(compacts).toEqual([])
+  await $.session.measure({ ...usage(150_000), changed: ['context'] }) // 75%
+  await $.turn.complete(done('b'))
+  expect(compacts).toEqual(['compact'])
+  await $.turn.complete(done('c')) // not again until a fresh reading
+  expect(compacts).toEqual(['compact'])
 })

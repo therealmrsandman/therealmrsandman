@@ -19,6 +19,8 @@ const budgetWarned = atom({ plugin: 'token-meter', key: 'budgetWarned' } as cons
 const spent = atom({ plugin: 'token-meter', key: 'spent' } as const, 0)
 const EMPTY_STATS: Stats = { peakPercent: 0, peakTokens: 0, compactions: 0, turns: [] }
 const stats = atom({ plugin: 'token-meter', key: 'stats' } as const, EMPTY_STATS)
+// Set once auto-compaction ran for the current crossing; a fresh reading clears it.
+const autoCompacted = atom({ plugin: 'token-meter', key: 'autoCompacted' } as const, false)
 
 // Budget levels (%) that fire a one-time toast.
 const BUDGET_LEVELS = [80, 100]
@@ -93,6 +95,7 @@ async function measure($: EngineInterface, u: Usage) {
     turnDelta: prev ? tokens - prev.tokens : 0,
   }
   await update($, reading, () => next)
+  await update($, autoCompacted, () => false)
 
   const biggest = (await read($, tools))[0]
   await update($, stats, st => ({
@@ -156,7 +159,28 @@ async function report($: EngineInterface) {
   return lines.join('\n')
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  const raw = Number(options.autoCompactAt ?? 0)
+  const autoAt = Number.isFinite(raw) && raw > 0 ? Math.min(raw, 95) : 0
+
+  // Opt-in: once a main-loop turn has finished, compact if the context passed the threshold.
+  // (The engine refuses a compaction from prompt.submit, under the turn it starts.)
+  on('turn.complete', async ($, e, next) => {
+    const res = await next(e)
+    if (autoAt === 0 || e.agentId !== undefined || e.isAborted) return res
+    const r = await read($, reading)
+    if (r && r.percent >= autoAt && !(await read($, autoCompacted))) {
+      await update($, autoCompacted, () => true)
+      try {
+        const done = await $.session.compact({ instructions: 'Keep the current task, open decisions and file paths.' })
+        if (!('skip' in done && done.skip)) $.ui.toast(`Auto-compacted at ${r.percent}% (threshold ${autoAt}%).`)
+      } catch {
+        $.ui.toast(`Context at ${r.percent}%: auto-compact could not run; try /compact.`)
+      }
+    }
+    return res
+  })
+
   on('session.start', async ($, e, next) => {
     const saved = await $.store.get('budget').catch(() => undefined) // a missing store must not stop the meter
     if (isBudget(saved)) await update($, budget, () => saved)

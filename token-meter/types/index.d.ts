@@ -23,6 +23,7 @@ declare module 'claude-code' {
       budgetWarned: number
       spent: number
       stats: Stats
+      autoCompacted: boolean
     }
   }
 }
