@@ -75,3 +75,43 @@ test('/clear zeroes the meter', async ($, on) => {
   expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).toContain('ctx 0/200k')
   await ui.unmount()
 })
+
+test('a turn adding >15% of the window fires a spike toast', async ($, on) => {
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+
+  await $.session.measure({ ...usage(10_000), changed: ['context'] })
+  await $.session.measure({ ...usage(30_000), changed: ['context'] }) // +10%: quiet
+  expect(toasts.some(t => /spike/i.test(t))).toBe(false)
+  await $.session.measure({ ...usage(70_000), changed: ['context'] }) // +20%
+  expect(toasts.find(t => /spike/i.test(t))).toContain('+40k')
+})
+
+test('the band names the three biggest tool calls of the last turn', async ($, on) => {
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('turn.start', (_, e) => ({ turnId: e.turnId }))
+  on('tool.call', (_, e) => {
+    const sizes: Record<string, number> = { Read: 40_000, Bash: 8_000, Grep: 2_000, Glob: 400 }
+    const size = sizes[e.tool] ?? 0
+    return { result: {}, text: 'x'.repeat(size) } as never
+  })
+
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  for (const tool of ['Glob', 'Read', 'Grep', 'Bash']) await $.tool.call({ tool, tool_use_id: tool } as never)
+  await $.session.measure({ ...usage(30_000), changed: ['context'] })
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  const detail = (await ui.find({ type: 'Text', text: /ctx/ }))?.text ?? ''
+  expect(detail).toContain('top: Read 10k, Bash 2.0k, Grep 500')
+  expect(detail).not.toContain('Glob')
+  await ui.unmount()
+
+  await $.turn.start({ text: 'next', turnId: 't2' }) // a new turn clears the list
+  const ui2 = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui2.find({ type: 'Text', text: /ctx/ }))?.text).not.toContain('top:')
+  await ui2.unmount()
+})

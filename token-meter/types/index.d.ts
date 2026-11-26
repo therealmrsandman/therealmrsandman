@@ -1,3 +1,5 @@
+export type ToolCost = { name: string; tokens: number }
+
 export type Reading = {
   tokens: number
   window: number
@@ -9,6 +11,6 @@ export type Reading = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'token-meter': { reading: Reading | null; warned: number; isHidden: boolean }
+    'token-meter': { reading: Reading | null; warned: number; isHidden: boolean; tools: ToolCost[] }
   }
 }

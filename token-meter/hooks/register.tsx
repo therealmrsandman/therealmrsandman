@@ -7,11 +7,17 @@ import type {
   SessionRateLimit,
 } from 'claude-code'
 
-import type { Reading } from '../types'
+import type { Reading, ToolCost } from '../types'
 
 const reading = atom({ plugin: 'token-meter', key: 'reading' } as const, null)
 const warned = atom({ plugin: 'token-meter', key: 'warned' } as const, 0)
 const isHidden = atom({ plugin: 'token-meter', key: 'isHidden' } as const, false)
+const tools = atom({ plugin: 'token-meter', key: 'tools' } as const, [] as ToolCost[])
+
+// One turn adding more than this share of the window fires a spike toast.
+const SPIKE = 0.15
+// Rough chars-per-token for sizing a tool result's text.
+const CHARS_PER_TOKEN = 4
 
 // Context-fill levels (%) that trigger a one-time nudge toast.
 const THRESHOLDS = [50, 70, 85]
@@ -51,6 +57,14 @@ async function measure($: EngineInterface, u: Usage) {
   }
   await update($, reading, () => next)
 
+  if (next.window > 0 && next.turnDelta > next.window * SPIKE) {
+    const top = (await read($, tools))[0]
+    $.ui.toast(
+      `Token spike: +${k(next.turnDelta)} in one turn (${Math.round((next.turnDelta / next.window) * 100)}% of the window)` +
+        (top ? `, mostly ${top.name}.` : '.'),
+    )
+  }
+
   const crossed = THRESHOLDS.filter(t => percent >= t).pop() ?? 0
   const last = await read($, warned)
   if (crossed > last) $.ui.toast(tip(percent))
@@ -64,6 +78,21 @@ export const register: Register = on => {
     await measure($, await $.session.usage()) // plain call: free, no API request
     await $.command.register({ name: 'meter', description: 'Show or hide the token meter bar' })
     return next(e)
+  })
+
+  // Each turn starts a fresh top-3 list of its biggest tool results.
+  on('turn.start', async ($, e, next) => {
+    if (e.agentId === undefined) await update($, tools, () => [])
+    return next(e)
+  })
+
+  on('tool.call', async ($, e, next) => {
+    const r = await next(e)
+    if (e.agentId === undefined && typeof r.text === 'string') {
+      const cost = { name: e.tool, tokens: Math.round(r.text.length / CHARS_PER_TOKEN) }
+      await update($, tools, list => [...list, cost].sort((a, b) => b.tokens - a.tokens).slice(0, 3))
+    }
+    return r
   })
 
   on('session.measure', async ($, e, next) => {
@@ -80,6 +109,7 @@ export const register: Register = on => {
         await update($, reading, () => ({ ...prev, tokens: 0, percent: 0, usd: null, turnDelta: 0 }))
       }
       await update($, warned, () => 0)
+      await update($, tools, () => [])
       $.ui.status(prev ? `ctx 0% · 0` : undefined)
     }
     return next(e)
@@ -94,6 +124,7 @@ export const register: Register = on => {
     const r = await read($, reading)
     if (e.props.hasSurvey || r === null || (await read($, isHidden))) return next(e)
 
+    const top = await read($, tools)
     const { Box, Text } = $.ui.resolve(e)
 
     return (
@@ -105,6 +136,7 @@ export const register: Register = on => {
           {'  '}ctx {k(r.tokens)}/{k(r.window)}
           {r.turnDelta > 0 ? `  +${k(r.turnDelta)} last turn` : ''}
           {r.usd !== null ? `  ~$${r.usd.toFixed(2)} est.` : ''}
+          {top.length ? `  top: ${top.map(t => `${t.name} ${k(t.tokens)}`).join(', ')}` : ''}
           {r.limit ? `  ${r.limit.kind.replace(/_/g, '-')} limit ${Math.round(r.limit.percentUsed)}%` : ''}
         </Text>
       </Box>

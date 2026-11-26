@@ -12,10 +12,12 @@ It adds one line above the prompt:
 - **ctx**: tokens in use / window size.
 - **+N last turn**: how much your last message grew the context, so expensive turns stand out.
 - **~$ est.**: estimated session cost (an estimate, not your bill).
+- **top:**: the three tool calls whose results were biggest in the current turn (≈ chars ÷ 4), so you can see what to read in smaller ranges.
 - **limit**: your fullest rate-limit window (five-hour or seven-day).
 - A short `ctx 48% · 96k` entry in the status line.
 
 At 50%, 70% and 85% it shows a one-time toast suggesting `/compact` or `/clear`, the two biggest token savers.
+**Spike alert:** when a single turn adds more than 15% of the window, a toast names the jump and the biggest tool call behind it.
 Type `/meter` to hide or show the bar. It makes no model calls, so it costs no tokens.
 It also bundles a `token-thrift` skill that keeps Claude's own replies and searches lean and tells you when to `/compact` or `/clear`.
 
