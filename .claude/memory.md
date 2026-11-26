@@ -19,3 +19,4 @@
 - Productivity memory bootstrap awaits where todos live.
 - PR #13 (draft): mergeable clean, no CI check runs, no review threads at 2026-11-26; PR check-ins stopped, next GitHub event or user message resumes.
 - Draft skill at /root/.claude/skills/respect-partner-model-rule/SKILL.md (outside repo). With-skill B via file: haiku (followed cost rule; baseline opus). Next: file-based A and C with skill, plus second rep of B; run /compact first (context 92%).
+- With-skill file-based results (2026-11-26): A (extraction) haiku; C (label 300 tickets) haiku; B repeat run 2 = sonnet (run 1 = haiku). B varies between runs: one-run results are not stable (2026-11-26)
