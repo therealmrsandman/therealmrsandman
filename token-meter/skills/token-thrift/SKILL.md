@@ -31,6 +31,13 @@ Test runners, builds, linters, installs and CI logs (`gh run view --log-failed`)
 
 Order: the failing test file(s) by path first, filtered; then the wider suite once, piped to `tail -25` for its summary line. Re-run unfiltered only the single test whose filtered output was not enough.
 
+## Edit recipe
+
+- Change a file with Edit (`old_string` → `new_string`), not by rewriting it with Write. Use Write only for new files or full rewrites.
+- After an Edit succeeds, don't Read the file back to check it: the tool would have failed if the match was wrong.
+- Large file (300+ lines): Read with `offset`/`limit` around the lines a grep found, not the whole file.
+- A file already read this session and not changed since: use what you read, don't read it again.
+
 ## Reply shape
 
 1. The answer or result (value, file:line, what changed).
@@ -44,6 +51,8 @@ The reply is these parts and ends after them. What you searched or double-checke
 | Situation | Thrifty move |
 |---|---|
 | Find a setting/symbol | Filtered grep first, then a line range |
+| Change part of a file | Edit, not Write; no read-back after |
+| Look inside a large file | Read with offset/limit at the grep hit |
 | Run tests / build / CI log | Pipe to `grep … \| head -30` or `tail -25` |
 | Context 70%+, mid-task | One line: suggest `/compact` |
 | Unrelated request, context 50%+ | One line: suggest `/clear` |
