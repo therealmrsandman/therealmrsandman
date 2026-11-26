@@ -323,7 +323,27 @@ test('/clear re-arms auto-compaction', { options: { autoCompactAt: 70 } }, async
   await $.turn.complete(done('a'))
   expect(compacts).toHaveLength(1)
   await $.session.end({ reason: 'clear', sessionId: 's1', resume: { id: 's1' } })
-  await $.session.measure({ ...usage(150_000), changed: ['context'] }) // 75% on the first turn after /clear
+  // A large first turn after /clear can land at or above the threshold right away;
+  // that is the case where a latch left over from before /clear would skip compaction.
+  await $.session.measure({ ...usage(150_000), changed: ['context'] }) // 75%
   await $.turn.complete(done('b'))
+  expect(compacts).toHaveLength(2)
+})
+
+test('after /clear, auto-compaction still runs once per crossing', { options: { autoCompactAt: 70 } }, async ($, on) => {
+  const compacts: string[] = []
+  autoCompactHarness(on, compacts)
+  on('session.end', (_, e) => ({ sessionId: e.sessionId }))
+  await $.session.measure({ ...usage(164_000), changed: ['context'] }) // 82%
+  await $.turn.complete(done('a'))
+  await $.session.end({ reason: 'clear', sessionId: 's1', resume: { id: 's1' } })
+  await $.session.measure({ ...usage(40_000), changed: ['context'] }) // 20%
+  await $.turn.complete(done('b'))
+  expect(compacts).toHaveLength(1)
+  await $.session.measure({ ...usage(150_000), changed: ['context'] }) // 75%: crosses again
+  await $.turn.complete(done('c'))
+  expect(compacts).toHaveLength(2)
+  await $.session.measure({ ...usage(160_000), changed: ['context'] }) // 80%: same crossing
+  await $.turn.complete(done('d'))
   expect(compacts).toHaveLength(2)
 })
