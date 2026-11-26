@@ -209,7 +209,7 @@ test('the band draws as one row on terminal, desktop, vscode and mobile', async 
 const done = (turnId: string) =>
   ({ answer: 'ok', durationMs: 1, isAborted: false, turnId, reason: 'answer' }) as const
 
-const autoCompactHarness = (on: On, compacts: string[]) => {
+const autoCompactHarness = (on: On, compacts: string[], toasts: string[] = []) => {
   on('session.measure', (_, e) => ({ changed: e.changed }))
   on('turn.complete', (_, e) => ({ text: e.answer }))
   on('session.messages', () => ({ value: [{ role: 'user', text: 'hi', toolUses: [] }] }) as never)
@@ -217,7 +217,10 @@ const autoCompactHarness = (on: On, compacts: string[]) => {
     compacts.push(e.instructions ? 'compact' : 'compact (no instructions)')
     return { messages: [{ role: 'user', text: 'summary', toolUses: [] }] }
   })
-  on('ui.toast', () => ({ value: undefined }))
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
 }
 
 test('auto-compaction defaults to 80%', async ($, on) => {
@@ -357,4 +360,142 @@ test('after /clear, auto-compaction still runs once per crossing', { options: { 
   await $.session.measure({ ...usage(160_000), changed: ['context'] }) // 80%: same crossing
   await $.turn.complete(done('d'))
   expect(compacts).toHaveLength(2)
+})
+
+const sessionHarness = (on: On, toasts: string[] = []) => {
+  on('session.usage', () => ({ value: { startedAt: 0, ...usage(10_000) } }))
+  on('command.register', () => ({ value: { command: 'meter' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('session.end', (_, e) => ({ sessionId: e.sessionId }))
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+}
+const START = { cwd: '/', surface: 'terminal', isInteractive: true } as const
+const CLEAR = { reason: 'clear', sessionId: 's1', resume: { id: 's1' } } as const
+
+test('session.start resets spent tokens and the report', async ($, on) => {
+  sessionHarness(on)
+  mock.store(on, { budget: { kind: 'tokens', limit: 100_000 } })
+  await $.session.start(START)
+  await $.session.measure({ ...usage(70_000), changed: ['context'] }) // +60k
+  await $.session.start(START)
+  const text = (await $.command.run(budgetRun('report'))).text
+  expect(text).toContain('Biggest turns: none yet')
+  expect(text).toContain('Peak context: 5%')
+  expect(text).toContain('Budget: 0% of 100k tokens')
+})
+
+test('/clear resets spent tokens and the report', async ($, on) => {
+  sessionHarness(on)
+  mock.store(on, { budget: { kind: 'tokens', limit: 100_000 } })
+  await $.session.start(START)
+  await $.session.measure({ ...usage(70_000), changed: ['context'] }) // +60k
+  await $.session.end(CLEAR)
+  const text = (await $.command.run(budgetRun('report'))).text
+  expect(text).toContain('Biggest turns: none yet')
+  expect(text).toContain('Peak context: 0%')
+  expect(text).toContain('Budget: 0% of 100k tokens')
+})
+
+test('a token budget warns again when it is re-crossed after /clear', async ($, on) => {
+  const toasts: string[] = []
+  sessionHarness(on, toasts)
+  mock.store(on, { budget: { kind: 'tokens', limit: 50_000 } })
+  await $.session.start(START)
+  await $.session.measure({ ...usage(52_000), changed: ['context'] }) // +42k = 84%
+  await $.session.end(CLEAR)
+  await $.session.measure({ ...usage(10_000), changed: ['context'] }) // fresh base
+  await $.session.measure({ ...usage(52_000), changed: ['context'] }) // +42k = 84% again
+  expect(toasts.filter(t => /Budget at 80%/.test(t))).toHaveLength(2)
+})
+
+for (const [label, saved] of [
+  ['a string', 'garbage'],
+  ['an infinite limit', { kind: 'usd', limit: Infinity }],
+  ['an unsafe limit', { kind: 'tokens', limit: 1e300 }],
+  ['a negative limit', { kind: 'tokens', limit: -5 }],
+  ['an unknown kind', { kind: 'eur', limit: 5 }],
+] as const) {
+  test(`a stored budget that is ${label} is ignored`, async ($, on) => {
+    sessionHarness(on)
+    mock.store(on, { budget: saved })
+    await $.session.start(START)
+    expect((await $.command.run(budgetRun('budget'))).text).toMatch(/No budget set/)
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).not.toContain('budget')
+    await ui.unmount()
+  })
+}
+
+test('a store that fails to read does not stop the meter', async ($, on) => {
+  sessionHarness(on)
+  on('store.get', () => {
+    throw new Error('corrupt store')
+  })
+  await $.session.start(START)
+  expect((await $.command.run(budgetRun('budget'))).text).toMatch(/No budget set/)
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).toContain('ctx 10k/200k')
+  await ui.unmount()
+})
+
+test('/meter budget rejects an amount too large to count safely', async ($, on) => {
+  mock.store(on)
+  expect((await $.command.run(budgetRun('budget 99999999999999999999'))).text).toMatch(/Could not read/)
+})
+
+test('a compaction resets the turn baseline: no false growth, spike or spend', async ($, on) => {
+  const compacts: string[] = []
+  const toasts: string[] = []
+  autoCompactHarness(on, compacts, toasts)
+  on('command.run', () => ({ text: 'engine' }))
+  await $.session.measure({ ...usage(100_000), changed: ['context'] })
+  await $.session.measure({ ...usage(110_000), changed: ['context'] }) // +10k
+  await $.session.compact({ trigger: 'manual', messages: [{ role: 'user', text: 'hi', toolUses: [] }] } as never)
+  // The first reading after a compaction is the new base, whichever way it moved.
+  await $.session.measure({ ...usage(150_000), changed: ['context'] })
+  let ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).not.toContain('last turn')
+  await ui.unmount()
+  expect(toasts.some(t => /spike/i.test(t))).toBe(false)
+  await $.session.measure({ ...usage(160_000), changed: ['context'] }) // +10k
+  ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).toContain('+10k last turn')
+  await ui.unmount()
+  const text = (await $.command.run(budgetRun('report'))).text
+  expect(text).toContain('Compactions: 1')
+  expect(text).toContain('Biggest turns: +10k, +10k')
+})
+
+test('a reading below the threshold re-arms auto-compaction mid-turn', { options: { autoCompactAt: 70 } }, async ($, on) => {
+  const compacts: string[] = []
+  autoCompactHarness(on, compacts)
+  await $.session.measure({ ...usage(164_000), changed: ['context'] }) // 82%
+  await $.turn.complete(done('a'))
+  expect(compacts).toHaveLength(1)
+  await $.session.measure({ ...usage(60_000), changed: ['context'] }) // 30%: the compaction took
+  await $.session.measure({ ...usage(150_000), changed: ['context'] }) // 75%: a new crossing
+  await $.turn.complete(done('b'))
+  expect(compacts).toHaveLength(2)
+})
+
+test('missing usage numbers leave a readable band', async ($, on) => {
+  on('session.usage', () => {
+    throw new Error('no usage yet')
+  })
+  on('command.register', () => ({ value: { command: 'meter' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  mock.store(on)
+  await $.session.start(START)
+  expect((await $.command.run(budgetRun('report'))).text).toContain('Est. cost: n/a')
+  await $.session.measure({ context: { window: 0 }, rateLimits: [], changed: ['context'] })
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /%/ }))?.text).toContain('0%')
+  const detail = (await ui.find({ type: 'Text', text: /ctx/ }))?.text ?? ''
+  expect(detail).toBe('  ctx 0/0')
+  await ui.unmount()
 })

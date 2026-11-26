@@ -1,5 +1,6 @@
 {
   "name": "therealmrsandman",
   "owner": { "name": "therealmrsandman" },
+  "description": "token-meter: keeps Claude Code token use in view and low.",
   "plugins": [{ "name": "token-meter", "source": "./token-meter" }]
 }

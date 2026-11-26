@@ -53,20 +53,25 @@ const parseBudget = (raw: string): Budget | 'off' | null => {
   const usd = /^\$\s*(\d+(?:\.\d+)?)$|^(\d+(?:\.\d+)?)\s*\$$/.exec(s)
   if (usd) {
     const n = Number(usd[1] ?? usd[2])
-    return n > 0 ? { kind: 'usd', limit: n } : 'off'
+    if (n === 0) return 'off'
+    const b: Budget = { kind: 'usd', limit: n }
+    return isBudget(b) ? b : null
   }
   const tok = /^(\d+(?:\.\d+)?)\s*([km]?)$/.exec(s)
   if (!tok) return null
   const n = Math.round(Number(tok[1]) * (tok[2] === 'k' ? 1e3 : tok[2] === 'm' ? 1e6 : 1))
-  return n > 0 ? { kind: 'tokens', limit: n } : 'off'
+  if (n === 0) return 'off'
+  const b: Budget = { kind: 'tokens', limit: n }
+  return isBudget(b) ? b : null
 }
 
 const isBudget = (v: unknown): v is Budget =>
   !!v &&
   typeof v === 'object' &&
   ((v as Budget).kind === 'usd' || (v as Budget).kind === 'tokens') &&
-  typeof (v as Budget).limit === 'number' &&
-  (v as Budget).limit > 0
+  Number.isFinite((v as Budget).limit) &&
+  (v as Budget).limit > 0 &&
+  (v as Budget).limit <= Number.MAX_SAFE_INTEGER
 
 const colorFor = (pct: number) => (pct >= 85 ? 'red' : pct >= 60 ? 'yellow' : 'green')
 
@@ -79,8 +84,8 @@ const tip = (pct: number) =>
 
 type Usage = { context: SessionContextUsage; cost?: SessionCost; rateLimits: SessionRateLimit[] }
 
-// Shared by session.start and session.measure.
-async function measure($: EngineInterface, u: Usage) {
+// Shared by session.start and session.measure. autoAt is the auto-compaction threshold (0 = off).
+async function measure($: EngineInterface, u: Usage, autoAt: number) {
   const prev = await read($, reading)
   const tokens = u.context.tokens ?? 0
   const percent =
@@ -92,10 +97,11 @@ async function measure($: EngineInterface, u: Usage) {
     percent,
     usd: u.cost ? u.cost.usd : null,
     limit: top ? { kind: top.kind, percentUsed: top.percentUsed } : null,
-    // prev.tokens is 0 only right after /clear: the next reading is a fresh base, not growth
-    turnDelta: prev && prev.tokens > 0 ? tokens - prev.tokens : 0,
+    turnDelta: prev && !prev.rebase ? tokens - prev.tokens : 0,
   }
   await update($, reading, () => next)
+  // Any reading under the threshold re-arms auto-compaction, even mid-turn.
+  if (autoAt > 0 && percent < autoAt) await update($, autoCompacted, () => false)
 
   const biggest = (await read($, tools))[0]
   await update($, stats, st => ({
@@ -143,6 +149,18 @@ async function measure($: EngineInterface, u: Usage) {
   $.ui.status(`ctx ${percent}% · ${k(tokens)}`)
 }
 
+// A new session or /clear starts the meter's per-conversation counters over.
+// A dollar budget's warnings survive /clear: est. cost is session-wide, so it would only re-toast.
+async function resetConversation($: EngineInterface, keepUsdWarnings: boolean) {
+  await update($, warned, () => 0)
+  await update($, tools, () => [])
+  await update($, autoCompacted, () => false)
+  await update($, spent, () => 0)
+  await update($, stats, () => EMPTY_STATS)
+  const b = await read($, budget)
+  if (!(keepUsdWarnings && b?.kind === 'usd')) await update($, budgetWarned, () => 0)
+}
+
 // A short, copy-pasteable summary of the session.
 async function report($: EngineInterface) {
   const r = await read($, reading)
@@ -170,8 +188,7 @@ export const register: Register = (on, options) => {
   on('turn.complete', async ($, e, next) => {
     const res = await next(e)
     if (autoAt === 0 || e.agentId !== undefined || e.isAborted) return res
-    const r = await read($, reading)
-    if (r && r.percent < autoAt) await update($, autoCompacted, () => false)
+    const r = await read($, reading) // measure() re-arms the latch whenever a reading is under autoAt
     if (r && r.percent >= autoAt && !(await read($, autoCompacted))) {
       await update($, autoCompacted, () => true)
       try {
@@ -185,6 +202,8 @@ export const register: Register = (on, options) => {
   })
 
   on('session.start', async ($, e, next) => {
+    await update($, reading, () => null)
+    await resetConversation($, false)
     const saved = await $.store.get('budget').catch(() => undefined) // a missing store must not stop the meter
     if (isBudget(saved)) await update($, budget, () => saved)
     await $.command.register({
@@ -192,7 +211,7 @@ export const register: Register = (on, options) => {
       description: 'Show/hide the token meter; report; budget <tokens|$>|off',
     })
     // plain call: free, no API request; on failure the first turn's measure fills the band
-    await $.session.usage().then(u => measure($, u), () => undefined)
+    await $.session.usage().then(u => measure($, u, autoAt), () => undefined)
     return next(e)
   })
 
@@ -212,16 +231,21 @@ export const register: Register = (on, options) => {
   })
 
   // Count compactions that happened (not skipped, not precomputed) in the main loop.
+  // The context shrank outside any turn, so the next reading is a fresh base: no growth, spike or spend.
   on('session.compact', async ($, e, next) => {
     const r = await next(e)
     if (e.agentId === undefined && e.trigger !== 'precompute' && 'messages' in r) {
-      await update($, stats, st => ({ ...st, compactions: st.compactions + 1 }))
+      // Bookkeeping only: a failure here must not fail the compaction itself.
+      await Promise.all([
+        update($, stats, st => ({ ...st, compactions: st.compactions + 1 })),
+        update($, reading, prev => (prev ? { ...prev, turnDelta: 0, rebase: true } : prev)),
+      ]).catch(() => undefined)
     }
     return r
   })
 
   on('session.measure', async ($, e, next) => {
-    await measure($, e)
+    await measure($, e, autoAt)
     return next(e)
   })
 
@@ -231,11 +255,9 @@ export const register: Register = (on, options) => {
     if (e.reason === 'clear') {
       const prev = await read($, reading)
       if (prev) {
-        await update($, reading, () => ({ ...prev, tokens: 0, percent: 0, turnDelta: 0 }))
+        await update($, reading, () => ({ ...prev, tokens: 0, percent: 0, turnDelta: 0, rebase: true }))
       }
-      await update($, warned, () => 0)
-      await update($, tools, () => [])
-      await update($, autoCompacted, () => false) // a fresh conversation re-arms auto-compaction
+      await resetConversation($, true)
       $.ui.status(prev ? `ctx 0% · 0` : undefined)
     }
     return next(e)
