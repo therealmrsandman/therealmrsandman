@@ -1,5 +1,11 @@
 import { atom, read, update } from 'claude-code'
-import type { Register, SessionContextUsage, SessionCost, SessionRateLimit } from 'claude-code'
+import type {
+  EngineInterface,
+  Register,
+  SessionContextUsage,
+  SessionCost,
+  SessionRateLimit,
+} from 'claude-code'
 
 import type { Reading } from '../types'
 
@@ -29,10 +35,11 @@ const tip = (pct: number) =>
 type Usage = { context: SessionContextUsage; cost?: SessionCost; rateLimits: SessionRateLimit[] }
 
 // Shared by session.start and session.measure.
-async function measure($: any, u: Usage) {
+async function measure($: EngineInterface, u: Usage) {
   const prev = await read($, reading)
   const tokens = u.context.tokens ?? 0
-  const percent = u.context.percent ?? Math.round((tokens / u.context.window) * 100)
+  const percent =
+    u.context.percent ?? (u.context.window > 0 ? Math.round((tokens / u.context.window) * 100) : 0)
   const top = [...u.rateLimits].sort((a, b) => b.percentUsed - a.percentUsed)[0]
   const next: Reading = {
     tokens,
@@ -78,7 +85,7 @@ export const register: Register = on => {
     return next(e)
   })
 
-  on('command.run', { name: 'meter' }, async ($, e, next) => {
+  on('command.run', { command: 'meter' }, async $ => {
     const hidden = await update($, isHidden, v => !v)
     return { text: hidden ? 'Token meter hidden. Run /meter again to show it.' : 'Token meter shown.' }
   })
@@ -98,7 +105,7 @@ export const register: Register = on => {
           {'  '}ctx {k(r.tokens)}/{k(r.window)}
           {r.turnDelta > 0 ? `  +${k(r.turnDelta)} last turn` : ''}
           {r.usd !== null ? `  ~$${r.usd.toFixed(2)} est.` : ''}
-          {r.limit ? `  ${r.limit.kind.replace('_', '-')} limit ${Math.round(r.limit.percentUsed)}%` : ''}
+          {r.limit ? `  ${r.limit.kind.replace(/_/g, '-')} limit ${Math.round(r.limit.percentUsed)}%` : ''}
         </Text>
       </Box>
     )
