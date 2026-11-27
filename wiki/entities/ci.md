@@ -13,7 +13,7 @@ Bump the pinned CLI version on purpose and check that both jobs stay green.
 ## cleanup-branches.yml (Mondays 04:17 UTC, or by hand)
 Deletes a `claude/*` branch only when all of these hold:
 - it has no open PR;
-- its last commit is older than 7 days;
+- its last commit is older than 3 days;
 - a PR from it was merged or closed, **or** `main` already contains all of its commits.
 
 Unmerged branches with no PR are kept. The check uses PR state because a squash merge doesn't make a branch's commits part of `main`'s history. A run started by hand is a dry run by default.
