@@ -14,8 +14,11 @@
 - Text-only subagents sometimes end with no SubagentHandback; resend via SendMessage costs another run. Make the prompt demand the exact output lines first (2026-11-26)
 - Inline text-only subagent prompts for pressure tests ended without reports; file-based scenario (read file, write answer file) worked (2026-11-26)
 - Pressure-test prompts not saved to disk can't be rerun exactly -> save every scenario file in the scratchpad at creation (2026-11-26)
+- Cloud session git proxy only allows pushing its own branch: deleting other remote branches returns 403 -> ask the user to delete them on GitHub's Branches page (2026-11-27)
+- User said branches were deleted but list_branches still showed them (local delete) -> always verify with list_branches before reporting done (2026-11-27)
+- Squash merges leave merged branches non-ancestors of main -> stale-branch cleanup must check PR state, not git ancestry alone (2026-11-27)
 ## state
-- PR #12 and #13 merged into main (5063495). Branch claude/amazing-pascal-xxjczi (2026-11-27): token-meter enabled, docs/repo-map.html added, wiki audited and updated; draft PR open. Next: user reviews PR; enabling token-meter takes effect next session.
+- PR #14 squash-merged into main (0fcf593, 2026-11-27): token-meter enabled, repo map, wiki audit, cleanup, CI workflow. Stale branches lucid-mccarthy and intelligent-sagan deleted. Follow-up branch adds weekly stale-branch cleanup workflow. Open: token-meter per-turn growth; /token-report picks last-prompted session.
 - Disabled 11 unused synced plugins via "<name>@synced": false in .claude/settings.json (effective next session; verify skill list shrank).
 - Diagnosis workspace: /root/.superpowers/diagnosing-superpowers/4bcb0feb-9293-5326-bb0a-da70bf496648/ — report.md written (§7 likely); issue search done (closest obra/superpowers #2096, #2034, #2710); next: user picks comment-on-existing vs new issue draft.
 - Productivity memory bootstrap awaits where todos live.

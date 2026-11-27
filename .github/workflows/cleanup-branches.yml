@@ -1,0 +1,69 @@
+name: cleanup-branches
+
+# Weekly: delete claude/* branches that are finished.
+# A branch is deleted only if it has no open PR, its last commit is older
+# than MIN_AGE_DAYS, and either a PR from it was merged or closed, or main
+# already contains all its commits. Unmerged work without a PR is kept.
+
+on:
+  schedule:
+    - cron: "17 4 * * 1" # Mondays 04:17 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List branches without deleting"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: cleanup-branches
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || 'false' }}
+          PREFIX: "claude/"
+          MIN_AGE_DAYS: "7"
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const dryRun = process.env.DRY_RUN === 'true';
+            const prefix = process.env.PREFIX;
+            const minAgeMs = Number(process.env.MIN_AGE_DAYS) * 86400000;
+            const { data: meta } = await github.rest.repos.get({ owner, repo });
+            const base = meta.default_branch;
+
+            const branches = await github.paginate(github.rest.repos.listBranches, { owner, repo, per_page: 100 });
+            for (const b of branches) {
+              if (!b.name.startsWith(prefix) || b.protected) continue;
+
+              const prs = await github.paginate(github.rest.pulls.list, {
+                owner, repo, state: 'all', head: `${owner}:${b.name}`, per_page: 100,
+              });
+              if (prs.some(p => p.state === 'open')) { core.info(`keep ${b.name}: open PR`); continue; }
+
+              const { data: commit } = await github.rest.repos.getCommit({ owner, repo, ref: b.commit.sha });
+              const age = Date.now() - new Date(commit.commit.committer.date).getTime();
+              if (age < minAgeMs) { core.info(`keep ${b.name}: recent activity`); continue; }
+
+              let done = prs.length > 0;
+              if (!done) {
+                const { data: cmp } = await github.rest.repos.compareCommitsWithBasehead({
+                  owner, repo, basehead: `${base}...${b.commit.sha}`,
+                });
+                done = cmp.ahead_by === 0;
+              }
+              if (!done) { core.info(`keep ${b.name}: unmerged commits, no PR`); continue; }
+
+              if (dryRun) { core.info(`would delete ${b.name}`); continue; }
+              await github.rest.git.deleteRef({ owner, repo, ref: `heads/${b.name}` });
+              core.info(`deleted ${b.name}`);
+            }
