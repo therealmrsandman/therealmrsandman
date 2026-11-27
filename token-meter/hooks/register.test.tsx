@@ -322,8 +322,28 @@ test('an unknown /meter subcommand explains usage and leaves the band shown', as
 
 test('/meter budget accepts $0 as off and commas in amounts', async ($, on) => {
   mock.store(on)
-  expect((await $.command.run({ ...METER, args: 'budget 1,000,000' })).text).toContain('1000k tokens')
+  expect((await $.command.run({ ...METER, args: 'budget 1,000,000' })).text).toContain('1.0m tokens')
   expect((await $.command.run({ ...METER, args: 'budget $0' })).text).toMatch(/cleared/i)
+})
+
+test('token counts near a million read as millions, never "1000k"', async ($, on) => {
+  mock.store(on)
+  expect((await $.command.run(budgetRun('budget 1m'))).text).toContain('Budget set: 1.0m tokens')
+  const text = (await $.command.run(budgetRun('budget 999950'))).text
+  expect(text).toContain('1.0m tokens')
+  expect(text).not.toContain('1000k')
+  expect((await $.command.run(budgetRun('budget 999k'))).text).toContain('999k tokens')
+})
+
+test('on a very narrow surface the one remaining segment is cut short with an ellipsis', async ($, on) => {
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  await $.session.measure({ ...usage(96_000), changed: ['context'] })
+  const ui = await $.ui.mount({ ...BAND, surface: 'mobile', props: { ...BAND.props, bodyColumns: 20 } })
+  const pct = (await ui.find({ type: 'Text', text: /%/ }))?.text ?? ''
+  const detail = (await ui.find({ type: 'Text', text: /ctx/ }))?.text ?? ''
+  expect(pct.length + detail.length).toBeLessThanOrEqual(20)
+  expect(detail).toBe('  ctx…')
+  await ui.unmount()
 })
 
 test('/clear re-arms auto-compaction', { options: { autoCompactAt: 70 } }, async ($, on) => {

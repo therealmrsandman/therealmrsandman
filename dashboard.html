@@ -584,15 +584,6 @@
       color: var(--accent);
     }
 
-    .list-item-section {
-      font-size: 11px;
-      color: var(--text-muted);
-      background: var(--bg-secondary);
-      padding: 2px 8px;
-      border-radius: 4px;
-      white-space: nowrap;
-    }
-
     .list-item-actions {
       display: none;
       position: absolute;
@@ -821,12 +812,6 @@
       align-items: center;
       gap: 8px;
       color: var(--text-primary);
-    }
-
-    .memory-card-meta {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 8px;
     }
 
     .memory-card-preview {
@@ -1588,7 +1573,7 @@
         if (saved) return;
         saved = true;
         const text = input.value.trim();
-        if (text) { task.subtasks.push({ text, checked: false }); markChanged(); }
+        if (text) { task.subtasks ??= []; task.subtasks.push({ text, checked: false }); markChanged(); }
         renderTasks();
       };
 
@@ -1887,10 +1872,6 @@
     function startWatching() {
       if (watchInterval) clearInterval(watchInterval);
       watchInterval = setInterval(checkForExternalChanges, 1000);
-    }
-
-    function stopWatching() {
-      if (watchInterval) { clearInterval(watchInterval); watchInterval = null; }
     }
 
     function renderTasks() {
@@ -2899,16 +2880,19 @@
     function renderMarkdownToHtml(md) {
       let html = escapeHtml(md);
 
+      // Set code aside first so heading, emphasis and list rules never touch it.
+      // \0B<n>\0 holds a ``` block, \0I<n>\0 an `inline` span; both are restored at the end.
+      const code = [];
+      const stash = (kind, snippet) => `\0${kind}${code.push(snippet) - 1}\0`;
+      html = html.replace(/```[\s\S]*?```/g, match =>
+        stash('B', '<pre><code>' + match.replace(/```\w*\n?/g, '') + '</code></pre>'));
+      html = html.replace(/`([^`]+)`/g, (_, inner) => stash('I', '<code>' + inner + '</code>'));
+
       html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
       html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
       html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
       html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
       html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-      html = html.replace(/```[\s\S]*?```/g, match => {
-        const code = match.replace(/```\w*\n?/g, '');
-        return '<pre><code>' + code + '</code></pre>';
-      });
-      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
       html = html.replace(/(\|.+\|\n\|[-| ]+\|\n(?:\|.+\|\n?)+)/g, match => {
         const lines = match.trim().split('\n');
         const headers = lines[0].split('|').filter(c => c.trim());
@@ -2926,11 +2910,11 @@
       });
       html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
       html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-      html = html.replace(/^(?!<[hupol]|<li|<table|<pre)(.+)$/gm, '<p>$1</p>');
+      html = html.replace(/^(?!<[hupol]|<li|<table|\0B)(.+)$/gm, '<p>$1</p>');
       html = html.replace(/<p><\/p>/g, '');
       html = html.replace(/<p>\s*<\/p>/g, '');
 
-      return html;
+      return html.replace(/\0[BI](\d+)\0/g, (_, i) => code[i]);
     }
 
     // Modal functions

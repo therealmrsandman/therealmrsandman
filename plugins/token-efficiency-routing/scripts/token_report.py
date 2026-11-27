@@ -1,47 +1,50 @@
 """Print token usage and memory savings for the current session."""
 import glob
-import json
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import MEMORY_REL, load_stats, memory_sections, project_dir  # noqa: E402
+from common import MEMORY_REL, iter_jsonl, load_stats, memory_sections, project_dir
+
+NO_DATA = "No session data yet. Send a prompt first, then run /token-report again."
+# Report field -> key in a message's usage block.
+FIELDS = {
+    "input": "input_tokens",
+    "cache_write": "cache_creation_input_tokens",
+    "cache_read": "cache_read_input_tokens",
+    "output": "output_tokens",
+}
 
 root = project_dir()
 stats = load_stats(root)
 sid = stats.get("last")
 s = stats.get("sessions", {}).get(sid, {})
 
-usage, seen = {"input": 0, "cache_write": 0, "cache_read": 0, "output": 0}, set()
-turns = 0
-try:
-    main = s["transcript"]
-    # Subagent transcripts live in <transcript dir>/<session id>/subagents/*.jsonl.
-    files = [main] + sorted(glob.glob(os.path.join(main[:-6], "subagents", "*.jsonl")))
-except Exception:
-    print("No session data yet. Send a prompt first, then run /token-report again.")
+main = s.get("transcript") if isinstance(s, dict) else None
+if not isinstance(main, str) or not os.path.isfile(main):
+    print(NO_DATA)
     sys.exit(0)
+# Subagent transcripts live in <transcript dir>/<session id>/subagents/*.jsonl.
+files = [main] + sorted(glob.glob(os.path.join(main[:-6], "subagents", "*.jsonl")))
+
+usage, seen = dict.fromkeys(FIELDS, 0), set()
+turns = 0
 for path in files:
-  try:
-    with open(path, encoding="utf-8", errors="replace") as f:
-        for raw in f:
-            try:
-                msg = (json.loads(raw).get("message") or {})
-            except ValueError:
+    try:
+        for entry in iter_jsonl(path):
+            msg = entry.get("message")
+            u = msg.get("usage") if isinstance(msg, dict) else None
+            if not isinstance(u, dict):
                 continue
-            u = msg.get("usage")
-            if not u or msg.get("id") in seen:
-                continue
-            seen.add(msg.get("id"))
+            mid = msg.get("id")
+            if mid:  # a message split over several lines repeats its id; count it once
+                if mid in seen:
+                    continue
+                seen.add(mid)
             turns += 1
-            usage["input"] += u.get("input_tokens", 0)
-            usage["cache_write"] += u.get("cache_creation_input_tokens", 0)
-            usage["cache_read"] += u.get("cache_read_input_tokens", 0)
-            usage["output"] += u.get("output_tokens", 0)
-  except OSError:
-    if path == main:
-        print("No session data yet. Send a prompt first, then run /token-report again.")
-        sys.exit(0)
+            for field, key in FIELDS.items():
+                usage[field] += u.get(key) or 0
+    except OSError:
+        pass
 
 total_in = usage["input"] + usage["cache_write"] + usage["cache_read"]
 cache_rate = usage["cache_read"] / total_in if total_in else 0

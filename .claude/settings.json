@@ -12,6 +12,7 @@
   },
   "enabledPlugins": {
     "token-efficiency-routing@therealmrsandman": true,
+    "token-meter@therealmrsandman": true,
     "sales@synced": false,
     "legal@synced": false,
     "canva@synced": false,

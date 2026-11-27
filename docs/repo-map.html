@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>therealmrsandman repo map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* VOICE work: a technical map shown to the repo owner
+   IDEA the repo drawn as an instrument panel, like token-meter's own one-line meter
+   PICTURE a segmented file-share meter, then the full tree as a wired map: marketplace feeding two plugins, plus the workspace
+   COLOUR aluminium ground, black ink, orange pointer for runtime/hook code
+   TYPE Geist 500 + Geist, Geist Mono for paths
+   LAYOUT laptop: title row, meter, three-column map; phone: one column in the same order */
+:root{color-scheme:light dark;--bg:light-dark(#e9eaec,#141517);--panel:light-dark(#f6f6f7,#1c1d20);--ink:light-dark(#111214,#ececee);--mute:light-dark(#5b5f66,#9a9ea6);--rule:light-dark(#c9cbcf,#33363b);--hot:#ff4f00;--hotbg:light-dark(#fff0e8,#2a1a12);--s1:light-dark(#111214,#ececee);--s2:light-dark(#5b5f66,#9a9ea6);--s3:light-dark(#9a9ea6,#5b5f66);--s4:light-dark(#c4c7cc,#3c3f45)}
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Geist,system-ui,sans-serif;overflow-x:clip}
+.band{padding-block:clamp(24px,3.5vw,52px);padding-left:max(5vw,16px,env(safe-area-inset-left,0px));padding-right:max(5vw,16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto}
+h1{font-size:clamp(32px,5vw,48px);line-height:1.05;letter-spacing:-.02em;font-weight:600;margin:0}
+h2{font-size:24px;line-height:1.15;letter-spacing:-.01em;font-weight:600;margin:0 0 6px}
+p{margin:0}
+.mono{font-family:"Geist Mono",ui-monospace,monospace}
+.head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:end;gap:16px 40px}
+.figs{display:flex;flex-wrap:wrap;gap:8px 32px}
+.figs div{white-space:nowrap}
+.figs b{display:block;font-size:30px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.figs span{color:var(--mute);font-size:13px}
+.lede{color:var(--mute);margin-top:10px;max-width:62ch}
+.lede.flush{margin-top:0}
+.band.tight{padding-top:0}
+.meter{margin-top:28px}
+.bar{display:flex;height:34px;border:1px solid var(--ink);background:var(--panel)}
+.bar i{display:block;height:100%;border-right:1px solid var(--bg)}
+.bar i:last-child{border-right:0}
+.keys{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:10px;font-size:14px}
+.keys span{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.keys em{width:12px;height:12px;display:inline-block;border:1px solid var(--ink)}
+.map{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:28px;margin-top:34px;align-items:start}
+.mkt{border:1.5px solid var(--ink);background:var(--panel);padding:12px 16px;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;position:relative}
+.mkt::after{content:"";position:absolute;left:25%;right:25%;top:100%;height:22px;border:1.5px solid var(--ink);border-top:0;border-bottom:0}
+.rail{height:22px}
+.plugwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+.panel{background:var(--panel);border:1px solid var(--rule);padding:14px 16px}
+.panel h3{margin:0;font-size:18px;font-weight:600;letter-spacing:-.01em}
+.panel .sub{color:var(--mute);font-size:14px;margin:2px 0 10px}
+.dir{margin-top:12px}
+.dir>.dn{font-family:"Geist Mono",monospace;font-size:13px;color:var(--mute);border-bottom:1px solid var(--rule);padding-bottom:3px;margin-bottom:4px}
+.f{display:grid;grid-template-columns:12px minmax(0,1fr);gap:8px;padding:4px 0;font-size:14px;line-height:1.35}
+.f .dot{width:8px;height:8px;margin-top:5px;background:var(--s3)}
+.f.hot .dot{background:var(--hot)}
+.f .n{font-family:"Geist Mono",monospace;font-size:13px;overflow-wrap:anywhere}
+.f .r{display:block;color:var(--mute);font-size:13px}
+.f.hot .n{color:light-dark(#c23a00,#ff7a3d)}
+.ws .panel+.panel{margin-top:14px}
+.tag{font-size:13px;color:var(--mute)}
+.note{margin-top:14px;padding:10px 12px;background:var(--hotbg);border-left:3px solid var(--hot);font-size:14px}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;margin-top:16px}
+th,td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--rule)}
+th{font-weight:600;font-size:13px;color:var(--mute)}
+td:first-child{font-weight:600;white-space:nowrap}
+td code,.flow code{font-family:"Geist Mono",monospace;font-size:13px;color:light-dark(#c23a00,#ff7a3d)}
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px}
+.flow{list-style:none;padding:0;margin:14px 0 0}
+.flow li{display:grid;grid-template-columns:minmax(0,15em) 28px minmax(0,1fr);align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px}
+.flow .arr{text-align:center;color:var(--hot);font-weight:600}
+.notes{list-style:none;padding:0;margin:14px 0 0}
+.notes li{padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px}
+.notes .mono{font-size:13px}
+.foot{color:var(--mute);font-size:13px}
+@media(max-width:900px){.map{grid-template-columns:minmax(0,1fr)}.split{grid-template-columns:minmax(0,1fr);gap:28px}}
+@media(max-width:620px){.plugwrap{grid-template-columns:minmax(0,1fr)}.mkt::after{display:none}.rail{height:14px}.flow li{grid-template-columns:minmax(0,1fr);gap:2px}.flow .arr{text-align:left}}
+@media(max-width:600px){table{font-size:13px}th,td{padding:6px 4px}.stack thead{display:none}.stack tr{display:grid;padding-block:10px;border-bottom:1px solid var(--rule)}.stack td{display:flex;justify-content:space-between;gap:12px;border:0;white-space:normal}.stack td::before{content:attr(data-l);color:var(--mute);font-weight:400;flex:none}}
+</style>
+</head>
+<body>
+
+<section class="band"><div class="wrap">
+  <div class="head">
+    <div>
+      <h1>Repo map</h1>
+      <p class="lede">A plugin marketplace with two token-saving plugins, plus the notes and memory that keep work going between sessions. Orange marks code that runs automatically during a session.</p>
+    </div>
+    <div class="figs" id="figs"></div>
+  </div>
+  <div class="meter">
+    <div class="bar" id="bar" role="img" aria-label="Share of files by area"></div>
+    <div class="keys" id="keys"></div>
+  </div>
+
+  <div class="map">
+    <div>
+      <div class="mkt">
+        <span class="mono" style="font-size:14px;font-weight:500">.claude-plugin/marketplace.json</span>
+        <span class="tag">the marketplace entry point that lists both plugins for install</span>
+      </div>
+      <div class="rail"></div>
+      <div class="plugwrap" id="plugins"></div>
+    </div>
+    <div class="ws" id="ws"></div>
+  </div>
+</div></section>
+
+<section class="band tight"><div class="wrap">
+  <h2>What runs during a session</h2>
+  <p class="lede flush">Each plugin hooks into different moments. token-efficiency-routing uses Python hook scripts; token-meter is one TypeScript module that subscribes to engine events.</p>
+  <div class="scroll"><table class="stack">
+    <thead><tr><th>Moment</th><th>token-efficiency-routing</th><th>token-meter</th></tr></thead>
+    <tbody id="life"></tbody>
+  </table></div>
+</div></section>
+
+<section class="band tight"><div class="wrap split">
+  <div>
+    <h2>Shared state</h2>
+    <p class="lede flush">Files the plugins read and write at runtime.</p>
+    <ul class="flow" id="flow"></ul>
+  </div>
+  <div>
+    <h2>Layout notes</h2>
+    <p class="lede flush">How the tree is arranged.</p>
+    <ul class="notes">
+      <li><span class="mono">token-meter/</span> sits at the repo root; <span class="mono">token-efficiency-routing</span> lives under <span class="mono">plugins/</span>. The marketplace points at both.</li>
+      <li>Each plugin carries its own tests: <span class="mono">claude plugin test</span> for token-meter, <span class="mono">tests/test_hooks.py</span> for the Python hooks.</li>
+      <li>Work lands on <span class="mono">main</span> through pull requests from <span class="mono">claude/*</span> branches.</li>
+    </ul>
+  </div>
+</div></section>
+
+<section class="band tight"><div class="wrap"><p class="foot">Built from the files on this branch, 27 Nov 2026.</p></div></section>
+
+<script>
+{
+const T = {
+  'token-meter': {
+    sub: 'v0.1.0 · TypeScript · a one-line token meter above the prompt',
+    dirs: [
+      ['.claude-plugin/', [['plugin.json','manifest; autoCompactAt option'],['icon.png','plugin icon']]],
+      ['hooks/', [['hooks.json','loads register.tsx',1],['register.tsx','the meter: band, toasts, /meter, auto-compact',1],['register.test.tsx','tests for the module']]],
+      ['skills/token-thrift/', [['SKILL.md','lean replies, searches and logs; when to /compact']]],
+      ['types/', [['index.d.ts','Reading, Budget, Stats types']]],
+      ['./', [['README.md','user guide'],['tsconfig.json','strict TS config'],['LICENSE','MIT'],['.gitignore','ignores generated types']]]
+    ]
+  },
+  'token-efficiency-routing': {
+    sub: 'v2.0.0 · Python · memory recall, model routing, /token-report',
+    dirs: [
+      ['hooks/', [['hooks.json','wires 3 events to scripts',1]]],
+      ['scripts/', [['session_start.py','loads core rules + saved memory',1],['recall.py','injects matching memory lines per prompt',1],['stop.py','asks once to save memory',1],['token_report.py','prints usage table'],['common.py','shared helpers']]],
+      ['agents/', [['extractor.md','Haiku: lookups, extraction'],['worker.md','Sonnet: routine edits'],['reasoner.md','Opus: hard decisions']]],
+      ['skills/', [['token-efficiency-routing','core context rules'],['memory','what to save'],['memory-recall','grep memory before research'],['advanced-reasoning','route to reasoner']]],
+      ['commands/', [['token-report.md','/token-report']]],
+      ['tests/', [['test_hooks.py','run as a script, not pytest']]],
+      ['./', [['.claude-plugin/plugin.json','manifest'],['README.md','feature list']]]
+    ]
+  }
+};
+const WS = [
+  ['.claude/', 'project config', [['settings.json','enables both plugins; subagents default to Haiku'],['memory.md','## lessons and ## state, read by the hooks',1]]],
+  ['wiki/', 'project knowledge base', [['index.md','table of contents'],['log.md','dated changes'],['entities/','token-meter, register-hooks, token-thrift, token-efficiency-routing'],['concepts/','context-budget'],['decisions/','read-before-edit']]],
+  ['docs/superpowers/plans/', 'implementation plans', [['2026-11-26-token-thrift-…md','answer-after-context-line experiment'],['../repo-map.html','this map']]],
+  ['repo root', 'profile and workspace', [['README.md','GitHub profile intro'],['dashboard.html','productivity dashboard'],['TASKS.md','task list, currently empty'],['LICENSE · .gitignore','MIT; ignores stats files']]]
+];
+// Plugin file counts come from the lists in T, so the meter and the map always agree.
+const files = name => T[name].dirs.reduce((a, d) => a + d[1].length, 0);
+const AREAS = [
+  ['token-efficiency-routing',files('token-efficiency-routing'),'var(--s1)'],
+  ['token-meter',files('token-meter'),'var(--hot)'],
+  ['wiki',8,'var(--s2)'],
+  ['root + docs',8,'var(--s3)'],
+  ['.claude',2,'var(--s4)']
+];
+const LIFE = [
+  ['Session start','<code>session_start.py</code> injects the core skill, saved ## state and ## lessons','Resets the reading, registers <code>/meter</code>'],
+  ['Each prompt','<code>recall.py</code> greps memory.md for prompt keywords, injects matching lines, logs stats','Marks the turn start for growth tracking'],
+  ['Each tool call','—','Records result size to rank the top 3 tool calls'],
+  ['Context measured','—','Updates the band; toasts at 50/70/85%, on a 15% spike, or at 80/100% of the budget'],
+  ['Turn end','<code>stop.py</code> asks once to save memory after 3+ tool calls','Auto-compacts if <code>autoCompactAt</code> is set and crossed'],
+  ['Commands','<code>/token-report</code>: tokens, cache hit rate, memory savings','<code>/meter</code> toggles; <code>report</code>, <code>budget</code>']
+];
+const FLOW = [
+  ['session_start.py, recall.py','read','.claude/memory.md'],
+  ['Claude, via the memory skill','writes','.claude/memory.md'],
+  ['recall.py','writes','.claude/token-efficiency-stats.json (gitignored)'],
+  ['token_report.py','reads','.claude/token-efficiency-stats.json'],
+  ['token-meter','stores','its budget in the plugin store; all else stays in-session']
+];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const row = ([n, r, hot]) => `<div class="f${hot ? ' hot' : ''}"><i class="dot"></i><div><span class="n">${esc(n)}</span><span class="r">${esc(r)}</span></div></div>`;
+
+const total = AREAS.reduce((a, x) => a + x[1], 0);
+const hooks = Object.values(T).flatMap(p => p.dirs.flatMap(d => d[1])).filter(f => f[2]).length;
+document.getElementById('figs').innerHTML = [[total,'tracked files'],[Object.keys(T).length,'plugins'],[hooks,'auto-run files']]
+  .map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join('');
+document.getElementById('bar').innerHTML = AREAS.map(([n, c, col]) => `<i title="${esc(n)}: ${c}" style="width:${c / total * 100}%;background:${col}"></i>`).join('');
+document.getElementById('keys').innerHTML = AREAS.map(([n, c, col]) => `<span><em style="background:${col}"></em>${esc(n)} <b>${c}</b></span>`).join('');
+
+document.getElementById('plugins').innerHTML = Object.entries(T).map(([name, p]) =>
+  `<div class="panel"><h3>${esc(name)}</h3><p class="sub">${esc(p.sub)}</p>${p.dirs.map(([d, fs]) =>
+    `<div class="dir"><div class="dn">${esc(d)}</div>${fs.map(row).join('')}</div>`).join('')}</div>`).join('');
+
+document.getElementById('ws').innerHTML = `<div class="panel"><h3>Workspace</h3><p class="sub">Project files outside the plugins</p>${WS.map(([d, s, fs]) =>
+  `<div class="dir"><div class="dn">${esc(d)} · ${esc(s)}</div>${fs.map(row).join('')}</div>`).join('')}
+  <div class="note"><b>Enabled here:</b> <span class="mono" style="font-size:13px">.claude/settings.json</span> turns on both token-efficiency-routing and token-meter for this project.</div></div>`;
+
+document.getElementById('life').innerHTML = LIFE.map(([m, a, b]) =>
+  `<tr><td data-l="">${m}</td><td data-l="routing">${a}</td><td data-l="meter">${b}</td></tr>`).join('');
+document.getElementById('flow').innerHTML = FLOW.map(([a, v, b]) =>
+  `<li><code>${esc(a)}</code><span class="arr">→</span><span><b>${esc(v)}</b> · ${esc(b)}</span></li>`).join('');
+}
+</script>
+</body>
+</html>
