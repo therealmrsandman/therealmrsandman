@@ -17,6 +17,7 @@
 - Cloud session git proxy only allows pushing its own branch: deleting other remote branches returns 403 -> ask the user to delete them on GitHub's Branches page (2026-11-27)
 - User said branches were deleted but list_branches still showed them (local delete) -> always verify with list_branches before reporting done (2026-11-27)
 - Squash merges leave merged branches non-ancestors of main -> stale-branch cleanup must check PR state, not git ancestry alone (2026-11-27)
+- Another session recreated a branch the user had deleted (intelligent-sagan, pushed "branch kept") -> never push to a branch after its PR merged or the user deleted it; restart from main on a new branch instead (2026-11-27)
 ## state
 - PRs #14 (0fcf593), #15 (6f84727) merged 2026-11-27; #16 (8fa161a) merged. Follow-up branch: CLI pinned, token-meter moved to plugins/token-meter, CI page, py_compile step. Left: dashboard duplicate editors; token-meter baseline/reset refactor; dry-run cleanup-branches after merge.
 - Disabled 11 unused synced plugins via "<name>@synced": false in .claude/settings.json (effective next session; verify skill list shrank).
