@@ -7,6 +7,7 @@ GitHub Actions in `.github/workflows/`.
 |---|---|
 | `token-efficiency-routing` | Python 3.12 · `py_compile` on `scripts/` and `tests/` · `python3 -B tests/test_hooks.py` |
 | `token-meter` | Node 22 · installs a pinned `@anthropic-ai/claude-code` · `claude plugin validate` on both plugins · `claude plugin test .` in `plugins/token-meter` |
+| `dashboard` | Node 22 · installs pinned `playwright` + Chromium · `node tests/dashboard-editors.test.js` (board/list inline editors in `dashboard.html`) |
 
 Bump the pinned CLI version on purpose and check that both jobs stay green.
 

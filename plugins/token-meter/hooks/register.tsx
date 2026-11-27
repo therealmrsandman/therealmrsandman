@@ -22,8 +22,9 @@ const stats = atom({ plugin: 'token-meter', key: 'stats' } as const, EMPTY_STATS
 // Set once auto-compaction ran for the current crossing; cleared when context drops below the threshold.
 const autoCompacted = atom({ plugin: 'token-meter', key: 'autoCompacted' } as const, false)
 // The main-loop turn in progress: its number and the context size it started from (null until a reading sets it).
-// Readings outside any turn each count as their own step.
-const turn = atom({ plugin: 'token-meter', key: 'turn' } as const, null as { id: number; base: number | null } | null)
+// Readings between turns add to the last turn until session.start or /clear resets it; before the first turn each reading is its own step.
+type TurnState = { id: number; base: number | null }
+const turn = atom({ plugin: 'token-meter', key: 'turn' } as const, null as TurnState | null)
 const turnSeq = atom({ plugin: 'token-meter', key: 'turnSeq' } as const, 0)
 // The last turn that fired a spike toast, so a turn warns once however many readings it takes.
 const spiked = atom({ plugin: 'token-meter', key: 'spiked' } as const, 0)
@@ -96,6 +97,21 @@ const tip = (pct: number) =>
       ? `Context over ${CTX_HIGH}%: consider /compact to cut the cost of every turn.`
       : 'Context past half: /clear between unrelated tasks keeps turns cheap.'
 
+// The context size new growth counts from: the last reading, unless compaction or /clear made the next one a fresh base.
+const baseOf = (r: Reading | null) => (r && !r.rebase ? r.tokens : null)
+
+// Every baseline/reset decision for one reading. step: growth since the last reading (the spend), 0 when there is
+// no usable base. base: where the current turn's growth counts from; it restarts at this reading when the turn has
+// none yet or a rebase came since. reset: the turn's base moved and must be written back.
+// Outside a turn the reading's growth is just its step.
+const advance = (prev: Reading | null, tokens: number, cur: TurnState | null) => {
+  const from = baseOf(prev)
+  const step = from === null ? 0 : tokens - from
+  if (!cur) return { step, base: null, turnDelta: step, reset: false }
+  const base = cur.base === null || prev?.rebase ? tokens : cur.base
+  return { step, base, turnDelta: tokens - base, reset: base !== cur.base }
+}
+
 type Usage = { context: SessionContextUsage; cost?: SessionCost; rateLimits: SessionRateLimit[] }
 
 // Shared by session.start and session.measure. autoAt is the auto-compaction threshold (0 = off).
@@ -103,13 +119,8 @@ async function measure($: EngineInterface, u: Usage, autoAt: number) {
   const [prev, [biggest], cur] = await Promise.all([read($, reading), read($, tools), read($, turn)])
   const tokens = u.context.tokens ?? 0
   // Growth since the last reading feeds the spend; growth since the turn began is the turn's size.
-  const step = prev && !prev.rebase ? tokens - prev.tokens : 0
-  let turnDelta = step
-  if (cur) {
-    const base = cur.base === null || prev?.rebase ? tokens : cur.base
-    if (base !== cur.base) await update($, turn, () => ({ id: cur.id, base }))
-    turnDelta = tokens - base
-  }
+  const { step, base, turnDelta, reset } = advance(prev, tokens, cur)
+  if (cur && reset) await update($, turn, () => ({ id: cur.id, base }))
   const percent =
     u.context.percent ?? (u.context.window > 0 ? Math.round((tokens / u.context.window) * 100) : 0)
   const top = [...u.rateLimits].sort((a, b) => b.percentUsed - a.percentUsed)[0]
@@ -245,7 +256,7 @@ export const register: Register = (on, options) => {
     if (e.agentId === undefined) {
       const [r, id] = await Promise.all([read($, reading), update($, turnSeq, n => n + 1)])
       await update($, tools, () => [])
-      await update($, turn, () => ({ id, base: r && !r.rebase ? r.tokens : null }))
+      await update($, turn, () => ({ id, base: baseOf(r) }))
     }
     return next(e)
   })
