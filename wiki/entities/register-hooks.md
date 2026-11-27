@@ -34,4 +34,4 @@ The single hook module for [[token-meter]]. Declared in `token-meter/hooks/hooks
 
 ## Open items
 
-- The validator warns that the `tool.call` and `session.compact` gating hooks lack `.catch`. Not changed.
+- None. The `.catch` validator warning is resolved; `claude plugin validate` reports nothing (2026-11-27).
