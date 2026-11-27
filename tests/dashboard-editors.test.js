@@ -21,7 +21,7 @@ const { chromium } = require('playwright');
     const N = view === 'board' ? '[data-action=edit-note]' : '.list-item-note';
     await type(N, 'hello'); ok((await st()).includes('"note":"hello"'), view + ' note');
     const S = view === 'board' ? '[data-action=edit-subtask]' : '.list-item-subtask span:last-child';
-    if (await p.$(S)) { await type(S, 'b2'); ok((await st()).includes('"b2"'), view + ' subtask edit'); }
+    await type(S, 'b2'); ok((await st()).includes('"b2"'), view + ' subtask edit');
     const A = view === 'board' ? '[data-action=add-subtask]' : '.list-item-add-subtask';
     await p.click(A); await p.keyboard.type('new sub'); await p.keyboard.press('Enter'); ok((await st()).includes('"new sub"'), view + ' add subtask');
     const C = view === 'board' ? '.column-title' : '.section-title';
