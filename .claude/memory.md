@@ -19,7 +19,7 @@
 - Squash merges leave merged branches non-ancestors of main -> stale-branch cleanup must check PR state, not git ancestry alone (2026-11-27)
 - Another session recreated a branch the user had deleted (intelligent-sagan, pushed "branch kept") -> never push to a branch after its PR merged or the user deleted it; restart from main on a new branch instead (2026-11-27)
 ## state
-- PRs #14 (0fcf593), #15 (6f84727) merged 2026-11-27; #16 (8fa161a) merged. Follow-up branch: CLI pinned, token-meter moved to plugins/token-meter, CI page, py_compile step. Left: dashboard duplicate editors; token-meter baseline/reset refactor; dry-run cleanup-branches after merge.
+- PRs #14–#19 merged 2026-11-27 (cleanup-branches dry run done; 3-day limit). Dashboard: board/list inline editors merged into inlineEdit(). Left: token-meter baseline/reset refactor.
 - Disabled 11 unused synced plugins via "<name>@synced": false in .claude/settings.json (effective next session; verify skill list shrank).
 - Diagnosis workspace: /root/.superpowers/diagnosing-superpowers/4bcb0feb-9293-5326-bb0a-da70bf496648/ — report.md written (§7 likely); issue search done (closest obra/superpowers #2096, #2034, #2710); next: user picks comment-on-existing vs new issue draft.
 - Productivity memory bootstrap awaits where todos live.

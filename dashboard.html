@@ -1460,14 +1460,14 @@
           markChanged();
           renderTasks();
         } else if (action === 'edit-title') {
-          startEditingTitle(e.target, task);
+          editTaskTitle(e.target, task, 'width: 100%; border-radius: 6px; padding: 6px 10px; font-size: 14px;');
         } else if (action === 'edit-note') {
-          startEditingNote(e.target, task);
+          editNote(e.target, task);
         } else if (action === 'edit-subtask') {
           const idx = parseInt(e.target.dataset.idx);
-          startEditingSubtask(e.target, task, idx);
+          editSubtask(e.target, task, idx);
         } else if (action === 'add-subtask') {
-          startAddingSubtask(e.target, task);
+          addSubtask(e.target, task);
         } else if (action === 'delete') {
           deleteTask(task);
         }
@@ -1476,136 +1476,81 @@
       return card;
     }
 
-    function startEditingTitle(titleEl, task) {
+    // Inline editing, shared by the board and list views. Each editor swaps
+    // an element for a text input: Enter or blur saves once, Escape cancels,
+    // and both re-render. Only the input's size differs between views.
+    const EDIT_CSS = 'background: var(--bg-card); border: 2px solid var(--accent); color: var(--text-primary); font-family: inherit; outline: none;';
+    const SECTION_TITLE_CSS = 'border-radius: 6px; padding: 4px 10px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;';
+
+    function inlineEdit(el, { value = '', placeholder = '', css, select = false, mount, onSave }) {
       const input = document.createElement('input');
       input.type = 'text';
-      input.value = task.title;
-      input.style.cssText = 'width: 100%; background: var(--bg-card); border: 2px solid var(--accent); border-radius: 6px; padding: 6px 10px; color: var(--text-primary); font-size: 14px; font-family: inherit; outline: none;';
-
-      titleEl.replaceWith(input);
+      input.value = value;
+      input.placeholder = placeholder;
+      input.style.cssText = EDIT_CSS + css;
+      if (mount) mount(input); else el.replaceWith(input);
       input.focus();
-      input.select();
+      if (select) input.select();
 
-      let saved = false;
-      const saveEdit = () => {
-        if (saved) return;
-        saved = true;
-        const newTitle = input.value.trim();
-        if (newTitle && newTitle !== task.title) {
-          task.title = newTitle;
+      let done = false;
+      const finish = (commit) => {
+        if (done) return;
+        done = true;
+        if (commit) onSave(input.value.trim());
+        renderTasks();
+      };
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+        else if (e.key === 'Escape') finish(false);
+      });
+      input.addEventListener('blur', () => finish(true));
+    }
+
+    function editTaskTitle(titleEl, task, css) {
+      inlineEdit(titleEl, {
+        value: task.title, css, select: true,
+        onSave: (text) => { if (text && text !== task.title) { task.title = text; markChanged(); } },
+      });
+    }
+
+    function editNote(noteEl, task) {
+      inlineEdit(noteEl, {
+        value: task.note || '', placeholder: 'Add a note...',
+        css: 'width: 100%; border-radius: 6px; padding: 4px 8px; font-size: 13px;',
+        onSave: (text) => { task.note = text; markChanged(); },
+      });
+    }
+
+    function editSubtask(subtaskEl, task, idx) {
+      inlineEdit(subtaskEl, {
+        value: task.subtasks[idx].text, select: true,
+        css: 'width: calc(100% - 30px); border-radius: 4px; padding: 2px 6px; font-size: 13px;',
+        onSave: (text) => {
+          if (text) task.subtasks[idx].text = text; else task.subtasks.splice(idx, 1);
           markChanged();
-        }
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
+        },
       });
-      input.addEventListener('blur', saveEdit);
     }
 
-    function startEditingNote(noteEl, task) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = task.note || '';
-      input.placeholder = 'Add a note...';
-      input.style.cssText = 'width: 100%; background: var(--bg-card); border: 2px solid var(--accent); border-radius: 6px; padding: 4px 8px; color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;';
-
-      noteEl.replaceWith(input);
-      input.focus();
-
-      let saved = false;
-      const saveEdit = () => {
-        if (saved) return;
-        saved = true;
-        task.note = input.value.trim();
-        markChanged();
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
+    function addSubtask(el, task) {
+      inlineEdit(el, {
+        placeholder: 'New subtask...',
+        css: 'width: calc(100% - 10px); border-radius: 4px; padding: 2px 6px; font-size: 13px;',
+        onSave: (text) => {
+          if (text) { (task.subtasks ??= []).push({ text, checked: false }); markChanged(); }
+        },
       });
-      input.addEventListener('blur', saveEdit);
     }
 
-    function startEditingSubtask(subtaskEl, task, idx) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = task.subtasks[idx].text;
-      input.style.cssText = 'width: calc(100% - 30px); background: var(--bg-card); border: 2px solid var(--accent); border-radius: 4px; padding: 2px 6px; color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;';
-
-      subtaskEl.replaceWith(input);
-      input.focus();
-      input.select();
-
-      let saved = false;
-      const saveEdit = () => {
-        if (saved) return;
-        saved = true;
-        const newText = input.value.trim();
-        if (newText) { task.subtasks[idx].text = newText; }
-        else { task.subtasks.splice(idx, 1); }
-        markChanged();
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
-      });
-      input.addEventListener('blur', saveEdit);
-    }
-
-    function startAddingSubtask(el, task) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.placeholder = 'New subtask...';
-      input.style.cssText = 'width: calc(100% - 10px); background: var(--bg-card); border: 2px solid var(--accent); border-radius: 4px; padding: 2px 6px; color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;';
-
-      el.replaceWith(input);
-      input.focus();
-
-      let saved = false;
-      const saveEdit = () => {
-        if (saved) return;
-        saved = true;
-        const text = input.value.trim();
-        if (text) { task.subtasks ??= []; task.subtasks.push({ text, checked: false }); markChanged(); }
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
-      });
-      input.addEventListener('blur', saveEdit);
-    }
-
-    function startEditingColumnTitle(titleEl, colId) {
-      const section = sections.find(s => s.id === colId);
+    function renameSection(titleEl, section, css) {
       if (!section) return;
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = section.name;
-      input.style.cssText = 'width: 180px; background: var(--bg-card); border: 2px solid var(--accent); border-radius: 6px; padding: 4px 10px; color: var(--text-primary); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-family: inherit; outline: none;';
-
-      titleEl.replaceWith(input);
-      input.focus();
-      input.select();
-
-      let saved = false;
-      const saveEdit = () => {
-        if (saved) return;
-        saved = true;
-        const newName = input.value.trim();
-        if (newName && newName !== section.name) {
+      inlineEdit(titleEl, {
+        value: section.name, css: css + SECTION_TITLE_CSS, select: true,
+        onSave: (name) => {
+          if (!name || name === section.name) return;
           const oldId = section.id;
-          section.name = newName;
-          const newId = taskSectionId(newName);
+          section.name = name;
+          const newId = taskSectionId(name);
           if (newId !== oldId) {
             tasks[newId] = tasks[oldId] || [];
             delete tasks[oldId];
@@ -1613,15 +1558,20 @@
             section.id = newId;
           }
           markChanged();
-        }
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
+        },
       });
-      input.addEventListener('blur', saveEdit);
+    }
+
+    function addSection(btn, css, styleBtn) {
+      inlineEdit(btn, {
+        placeholder: 'Section name...', css,
+        mount: (input) => { btn.innerHTML = ''; styleBtn(btn); btn.appendChild(input); },
+        onSave: (name) => {
+          if (!name) return;
+          const id = taskSectionId(name);
+          if (!tasks[id]) { sections.push({ id, name }); tasks[id] = []; markChanged(); }
+        },
+      });
     }
 
     function createColumn(id, title, items) {
@@ -1639,7 +1589,7 @@
       `;
 
       col.querySelector('.column-title').addEventListener('click', (e) => {
-        if (!col.dragging) { startEditingColumnTitle(e.target, id); }
+        if (!col.dragging) { renameSection(e.target, sections.find(s => s.id === id), 'width: 180px; '); }
       });
 
       const header = col.querySelector('.column-header');
@@ -1890,7 +1840,7 @@
       addSectionBtn.className = 'column';
       addSectionBtn.style.cssText = 'background: transparent; border: 2px dashed var(--border); display: flex; align-items: center; justify-content: center; cursor: pointer; min-height: 120px;';
       addSectionBtn.innerHTML = '<span style="color: var(--text-muted); font-size: 14px; font-weight: 500;">+ Add Section</span>';
-      addSectionBtn.addEventListener('click', () => startAddingSection(addSectionBtn));
+      addSectionBtn.addEventListener('click', () => addSection(addSectionBtn, 'width: 220px; border-radius: 8px; padding: 10px 14px; font-size: 14px;', (b) => { b.style.cssText = 'background: var(--bg-secondary); border: 2px dashed var(--accent); display: flex; align-items: center; justify-content: center; cursor: default; min-height: 120px; min-width: 340px; border-radius: 12px;'; }));
       board.appendChild(addSectionBtn);
     }
 
@@ -1953,7 +1903,7 @@
         `;
 
         header.querySelector('.section-title').addEventListener('click', (e) => {
-          startEditingListSectionTitle(e.target, section);
+          renameSection(e.target, section, 'width: 200px; ');
         });
 
         sectionEl.appendChild(header);
@@ -2023,80 +1973,8 @@
       const addSectionBtn = document.createElement('div');
       addSectionBtn.className = 'list-add-section';
       addSectionBtn.textContent = '+ Add Section';
-      addSectionBtn.addEventListener('click', () => { startAddingListSection(addSectionBtn); });
+      addSectionBtn.addEventListener('click', () => { addSection(addSectionBtn, 'width: 100%; border-radius: 8px; padding: 12px 16px; font-size: 14px; text-align: left;', (b) => { b.style.border = '2px solid var(--accent)'; b.style.cursor = 'default'; }); });
       listView.appendChild(addSectionBtn);
-    }
-
-    function startEditingListSectionTitle(titleEl, section) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = section.name;
-      input.style.cssText = 'width: 200px; background: var(--bg-card); border: 2px solid var(--accent); border-radius: 6px; padding: 4px 10px; color: var(--text-primary); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-family: inherit; outline: none;';
-
-      titleEl.replaceWith(input);
-      input.focus();
-      input.select();
-
-      let saved = false;
-      const saveEdit = () => {
-        if (saved) return;
-        saved = true;
-        const newName = input.value.trim();
-        if (newName && newName !== section.name) {
-          const oldId = section.id;
-          section.name = newName;
-          const newId = taskSectionId(newName);
-          if (newId !== oldId) {
-            tasks[newId] = tasks[oldId] || [];
-            delete tasks[oldId];
-            tasks[newId].forEach(t => t.section = newId);
-            section.id = newId;
-          }
-          markChanged();
-        }
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
-      });
-      input.addEventListener('blur', saveEdit);
-    }
-
-    function startAddingListSection(btn) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.placeholder = 'Section name...';
-      input.style.cssText = 'width: 100%; background: var(--bg-card); border: 2px solid var(--accent); border-radius: 8px; padding: 12px 16px; color: var(--text-primary); font-size: 14px; font-family: inherit; outline: none; text-align: left;';
-
-      btn.innerHTML = '';
-      btn.style.border = '2px solid var(--accent)';
-      btn.style.cursor = 'default';
-      btn.appendChild(input);
-      input.focus();
-
-      let saved = false;
-      const saveSection = () => {
-        if (saved) return;
-        saved = true;
-        const name = input.value.trim();
-        if (name) {
-          const id = taskSectionId(name);
-          if (!tasks[id]) {
-            sections.push({ id, name });
-            tasks[id] = [];
-            markChanged();
-          }
-        }
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveSection(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
-      });
-      input.addEventListener('blur', saveSection);
     }
 
     function createListItem(task, section) {
@@ -2134,7 +2012,7 @@
       title.textContent = task.title;
       title.addEventListener('click', (e) => {
         e.stopPropagation();
-        startEditingListItem(title, task);
+        editTaskTitle(title, task, 'width: 100%; border-radius: 6px; padding: 8px 12px; font-size: 15px;');
       });
       content.appendChild(title);
 
@@ -2144,7 +2022,7 @@
         note.textContent = task.note;
         note.addEventListener('click', (e) => {
           e.stopPropagation();
-          startEditingListNote(note, task);
+          editNote(note, task);
         });
         content.appendChild(note);
       } else {
@@ -2153,7 +2031,7 @@
         addNote.textContent = '+ Add note';
         addNote.addEventListener('click', (e) => {
           e.stopPropagation();
-          startEditingListNote(addNote, task);
+          editNote(addNote, task);
         });
         content.appendChild(addNote);
       }
@@ -2183,7 +2061,7 @@
           }
           stText.addEventListener('click', (e) => {
             e.stopPropagation();
-            startEditingListSubtask(stText, task, idx);
+            editSubtask(stText, task, idx);
           });
 
           subtaskEl.appendChild(stCheckbox);
@@ -2194,14 +2072,14 @@
         content.appendChild(subtasksContainer);
       }
 
-      const addSubtask = document.createElement('div');
-      addSubtask.className = 'list-item-add-subtask';
-      addSubtask.textContent = '+ Add subtask';
-      addSubtask.addEventListener('click', (e) => {
+      const addSubtaskEl = document.createElement('div');
+      addSubtaskEl.className = 'list-item-add-subtask';
+      addSubtaskEl.textContent = '+ Add subtask';
+      addSubtaskEl.addEventListener('click', (e) => {
         e.stopPropagation();
-        startAddingListSubtask(addSubtask, task);
+        addSubtask(addSubtaskEl, task);
       });
-      content.appendChild(addSubtask);
+      content.appendChild(addSubtaskEl);
 
       const actions = document.createElement('div');
       actions.className = 'list-item-actions';
@@ -2216,118 +2094,6 @@
       item.appendChild(actions);
 
       return item;
-    }
-
-    function startEditingListNote(noteEl, task) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = task.note || '';
-      input.placeholder = 'Add a note...';
-      input.style.cssText = 'width: 100%; background: var(--bg-card); border: 2px solid var(--accent); border-radius: 6px; padding: 4px 8px; color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;';
-
-      noteEl.replaceWith(input);
-      input.focus();
-
-      let saved = false;
-      const saveEdit = () => {
-        if (saved) return;
-        saved = true;
-        task.note = input.value.trim();
-        markChanged();
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
-      });
-      input.addEventListener('blur', saveEdit);
-    }
-
-    function startEditingListSubtask(subtaskEl, task, idx) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = task.subtasks[idx].text;
-      input.style.cssText = 'width: calc(100% - 30px); background: var(--bg-card); border: 2px solid var(--accent); border-radius: 4px; padding: 2px 6px; color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;';
-
-      subtaskEl.replaceWith(input);
-      input.focus();
-      input.select();
-
-      let saved = false;
-      const saveEdit = () => {
-        if (saved) return;
-        saved = true;
-        const newText = input.value.trim();
-        if (newText) { task.subtasks[idx].text = newText; }
-        else { task.subtasks.splice(idx, 1); }
-        markChanged();
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
-      });
-      input.addEventListener('blur', saveEdit);
-    }
-
-    function startAddingListSubtask(el, task) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.placeholder = 'New subtask...';
-      input.style.cssText = 'width: calc(100% - 10px); background: var(--bg-card); border: 2px solid var(--accent); border-radius: 4px; padding: 2px 6px; color: var(--text-primary); font-size: 13px; font-family: inherit; outline: none;';
-
-      el.replaceWith(input);
-      input.focus();
-
-      let saved = false;
-      const saveEdit = () => {
-        if (saved) return;
-        saved = true;
-        const text = input.value.trim();
-        if (text) {
-          if (!task.subtasks) task.subtasks = [];
-          task.subtasks.push({ text, checked: false });
-          markChanged();
-        }
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
-      });
-      input.addEventListener('blur', saveEdit);
-    }
-
-    function startEditingListItem(titleEl, task) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = task.title;
-      input.style.cssText = 'width: 100%; background: var(--bg-card); border: 2px solid var(--accent); border-radius: 6px; padding: 8px 12px; color: var(--text-primary); font-size: 15px; font-family: inherit; outline: none;';
-
-      titleEl.replaceWith(input);
-      input.focus();
-      input.select();
-
-      let saved = false;
-      const saveEdit = () => {
-        if (saved) return;
-        saved = true;
-        const newTitle = input.value.trim();
-        if (newTitle && newTitle !== task.title) {
-          task.title = newTitle;
-          markChanged();
-        }
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
-      });
-      input.addEventListener('blur', saveEdit);
     }
 
     function showSectionPicker(anchorEl) {
@@ -2379,40 +2145,6 @@
 
     listViewBtn.addEventListener('click', () => switchTaskView('list'));
     boardViewBtn.addEventListener('click', () => switchTaskView('board'));
-
-    function startAddingSection(btn) {
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.placeholder = 'Section name...';
-      input.style.cssText = 'width: 220px; background: var(--bg-card); border: 2px solid var(--accent); border-radius: 8px; padding: 10px 14px; color: var(--text-primary); font-size: 14px; font-family: inherit; outline: none;';
-
-      btn.innerHTML = '';
-      btn.style.cssText = 'background: var(--bg-secondary); border: 2px dashed var(--accent); display: flex; align-items: center; justify-content: center; cursor: default; min-height: 120px; min-width: 340px; border-radius: 12px;';
-      btn.appendChild(input);
-      input.focus();
-
-      let saved = false;
-      const saveSection = () => {
-        if (saved) return;
-        saved = true;
-        const name = input.value.trim();
-        if (name) {
-          const id = taskSectionId(name);
-          if (!tasks[id]) {
-            sections.push({ id, name });
-            tasks[id] = [];
-            markChanged();
-          }
-        }
-        renderTasks();
-      };
-
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); saveSection(); }
-        else if (e.key === 'Escape') { saved = true; renderTasks(); }
-      });
-      input.addEventListener('blur', saveSection);
-    }
 
     async function openTaskFile() {
       try {
