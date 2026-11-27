@@ -22,7 +22,7 @@ All reply with compact JSON only.
 - `advanced-reasoning` — send hard decisions to `reasoner`.
 
 ## Command
-`/token-report` → `token_report.py`: model calls (incl. subagent transcripts), input tokens (fresh / cache write / cache read), output, cache hit rate, prompts with recall, memory entry count.
+`/token-report` → `token_report.py`: reports the session in `CLAUDE_CODE_SESSION_ID` (falls back to the last to prompt). Model calls (incl. subagent transcripts), input tokens (fresh / cache write / cache read), output, cache hit rate, prompts with recall, memory entry count.
 
 ## Shared state
 - `.claude/memory.md` — read by `session_start.py` and `recall.py`; written by Claude via the `memory` skill.

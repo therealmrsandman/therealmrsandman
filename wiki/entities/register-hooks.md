@@ -7,9 +7,9 @@ The single hook module for [[token-meter]]. Declared in `token-meter/hooks/hooks
 | Event | What it does |
 |---|---|
 | `session.start` | Clears the reading, resets per-conversation counters, restores the saved budget, registers `/meter`, takes a first measurement (no API request). |
-| `turn.start` | Clears the top-3 tool list for main-loop turns. |
+| `turn.start` | For main-loop turns: clears the top-3 tool list and opens a turn whose growth is measured from the current reading. |
 | `tool.call` | Estimates a tool result's size (chars / 4) and keeps the top 3. |
-| `session.measure` | Updates the reading, peak stats, per-turn growth, spend, budget and threshold toasts, and the status line. |
+| `session.measure` | Updates the reading, peak stats, turn growth (since the turn began, so a turn with several readings is one entry and one spike), spend (per reading), budget and threshold toasts, and the status line. |
 | `session.compact` | Counts real compactions and rebases the reading so the next turn does not look like a spike. |
 | `session.end` (reason `clear`) | Zeroes the meter so pre-`/clear` usage does not linger. |
 | `turn.complete` | Only when `autoCompactAt` > 0: compacts once per crossing of the threshold. |
@@ -18,7 +18,7 @@ The single hook module for [[token-meter]]. Declared in `token-meter/hooks/hooks
 
 ## State atoms (plugin `token-meter`)
 
-`reading`, `warned`, `isHidden`, `tools`, `budget`, `budgetWarned`, `spent`, `stats`, `autoCompacted`. Their meaning is in [[context-budget]].
+`reading`, `warned`, `isHidden`, `tools`, `budget`, `budgetWarned`, `spent`, `stats`, `autoCompacted`, `turn`, `turnSeq`, `spiked`. Their meaning is in [[context-budget]].
 
 ## Constants
 

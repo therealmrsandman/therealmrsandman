@@ -5,8 +5,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 from common import MEMORY_REL, STATS_REL  # noqa: E402
 
-def run(script, payload, proj):
+def run(script, payload, proj, session=None):
     env = dict(os.environ, CLAUDE_PLUGIN_ROOT=ROOT, CLAUDE_PROJECT_DIR=proj)
+    env.pop("CLAUDE_CODE_SESSION_ID", None)  # tests must not see the session running them
+    if session:
+        env["CLAUDE_CODE_SESSION_ID"] = session
     p = subprocess.run([sys.executable, "-B", os.path.join(ROOT, "scripts", script)],
                        input=json.dumps(payload), capture_output=True, text=True, env=env)
     return p.returncode, p.stdout
@@ -67,6 +70,14 @@ open(main, "w").write(u("a")); open(os.path.join(d, "sid", "subagents", "x.jsonl
 json.dump({"last": "sid", "sessions": {"sid": {"transcript": main}}}, open(os.path.join(q, STATS_REL), "w"))
 _, out = run("token_report.py", {}, q)
 check("report includes agent tokens", "| Output tokens | 200 |" in out)
+
+# 5b. with two sessions recorded, /token-report shows the one running it, not the last to prompt
+other = os.path.join(d, "other.jsonl"); open(other, "w").write(u("c"))
+json.dump({"last": "other", "sessions": {"sid": {"transcript": main}, "other": {"transcript": other}}},
+          open(os.path.join(q, STATS_REL), "w"))
+_, mine = run("token_report.py", {}, q, session="sid")
+_, fallback = run("token_report.py", {}, q)
+check("report follows CLAUDE_CODE_SESSION_ID", "| Output tokens | 200 |" in mine and "| Output tokens | 100 |" in fallback)
 
 # 6. a slash command after a saved task starts a new task: no second memory prompt
 cmd = {"type": "user", "message": {"content": "<command-name>/token-report</command-name>"}}

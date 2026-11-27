@@ -2,7 +2,8 @@ export type ToolCost = { name: string; tokens: number }
 
 export type Budget = { kind: 'tokens' | 'usd'; limit: number }
 
-export type Turn = { delta: number; tool?: string }
+// id: the main-loop turn, when readings came inside one.
+export type Turn = { delta: number; tool?: string; id?: number }
 
 export type Stats = { peakPercent: number; peakTokens: number; compactions: number; turns: Turn[] }
 
@@ -26,6 +27,9 @@ declare module 'claude-code' {
       spent: number
       stats: Stats
       autoCompacted: boolean
+      turn: { id: number; base: number | null } | null
+      turnSeq: number
+      spiked: number
     }
   }
 }
