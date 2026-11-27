@@ -7,7 +7,7 @@ import type {
   SessionRateLimit,
 } from 'claude-code'
 
-import type { Budget, Reading, Stats, ToolCost } from '../types'
+import type { Budget, Reading, Stats, ToolCost, Turn } from '../types'
 
 const reading = atom({ plugin: 'token-meter', key: 'reading' } as const, null)
 const warned = atom({ plugin: 'token-meter', key: 'warned' } as const, 0)
@@ -21,6 +21,12 @@ const EMPTY_STATS: Stats = { peakPercent: 0, peakTokens: 0, compactions: 0, turn
 const stats = atom({ plugin: 'token-meter', key: 'stats' } as const, EMPTY_STATS)
 // Set once auto-compaction ran for the current crossing; cleared when context drops below the threshold.
 const autoCompacted = atom({ plugin: 'token-meter', key: 'autoCompacted' } as const, false)
+// The main-loop turn in progress: its number and the context size it started from (null until a reading sets it).
+// Readings outside any turn each count as their own step.
+const turn = atom({ plugin: 'token-meter', key: 'turn' } as const, null as { id: number; base: number | null } | null)
+const turnSeq = atom({ plugin: 'token-meter', key: 'turnSeq' } as const, 0)
+// The last turn that fired a spike toast, so a turn warns once however many readings it takes.
+const spiked = atom({ plugin: 'token-meter', key: 'spiked' } as const, 0)
 
 // Budget levels (%) that fire a one-time toast. The first also turns the band red.
 const BUDGET_LEVELS = [80, 100] as const
@@ -94,8 +100,16 @@ type Usage = { context: SessionContextUsage; cost?: SessionCost; rateLimits: Ses
 
 // Shared by session.start and session.measure. autoAt is the auto-compaction threshold (0 = off).
 async function measure($: EngineInterface, u: Usage, autoAt: number) {
-  const [prev, [biggest]] = await Promise.all([read($, reading), read($, tools)])
+  const [prev, [biggest], cur] = await Promise.all([read($, reading), read($, tools), read($, turn)])
   const tokens = u.context.tokens ?? 0
+  // Growth since the last reading feeds the spend; growth since the turn began is the turn's size.
+  const step = prev && !prev.rebase ? tokens - prev.tokens : 0
+  let turnDelta = step
+  if (cur) {
+    const base = cur.base === null || prev?.rebase ? tokens : cur.base
+    if (base !== cur.base) await update($, turn, () => ({ id: cur.id, base }))
+    turnDelta = tokens - base
+  }
   const percent =
     u.context.percent ?? (u.context.window > 0 ? Math.round((tokens / u.context.window) * 100) : 0)
   const top = [...u.rateLimits].sort((a, b) => b.percentUsed - a.percentUsed)[0]
@@ -105,7 +119,7 @@ async function measure($: EngineInterface, u: Usage, autoAt: number) {
     percent,
     usd: u.cost ? u.cost.usd : null,
     limit: top ? { kind: top.kind, percentUsed: top.percentUsed } : null,
-    turnDelta: prev && !prev.rebase ? tokens - prev.tokens : 0,
+    turnDelta,
   }
   await update($, reading, () => next)
   // Any reading under the threshold re-arms auto-compaction, even mid-turn.
@@ -115,17 +129,12 @@ async function measure($: EngineInterface, u: Usage, autoAt: number) {
     ...st,
     peakPercent: Math.max(st.peakPercent, percent),
     peakTokens: Math.max(st.peakTokens, tokens),
-    turns:
-      next.turnDelta > 0
-        ? [...st.turns, { delta: next.turnDelta, ...(biggest ? { tool: biggest.name } : {}) }]
-            .sort((a, b) => b.delta - a.delta)
-            .slice(0, 3)
-        : st.turns,
+    turns: next.turnDelta > 0 ? topTurns(st.turns, next.turnDelta, cur?.id, biggest?.name) : st.turns,
   }))
 
   const alerts: string[] = []
   const [used, b] = await Promise.all([
-    update($, spent, n => n + Math.max(0, next.turnDelta)),
+    update($, spent, n => n + Math.max(0, step)),
     read($, budget),
   ])
   if (b) {
@@ -141,7 +150,8 @@ async function measure($: EngineInterface, u: Usage, autoAt: number) {
     }
   }
 
-  if (next.window > 0 && next.turnDelta > next.window * SPIKE) {
+  if (next.window > 0 && next.turnDelta > next.window * SPIKE && !(cur && (await read($, spiked)) === cur.id)) {
+    if (cur) await update($, spiked, () => cur.id)
     alerts.push(
       `Token spike: +${k(next.turnDelta)} in one turn (${Math.round((next.turnDelta / next.window) * 100)}% of the window)` +
         (biggest ? `, mostly ${biggest.name}.` : '.'),
@@ -157,12 +167,20 @@ async function measure($: EngineInterface, u: Usage, autoAt: number) {
   $.ui.status(`ctx ${percent}% · ${k(tokens)}`)
 }
 
+// Keep the three biggest turns. A reading inside a turn replaces that turn's entry rather than adding one.
+const topTurns = (turns: Turn[], delta: number, id: number | undefined, tool: string | undefined): Turn[] => {
+  const same = id === undefined ? undefined : turns.find(t => t.id === id)
+  const entry: Turn = { delta: Math.max(delta, same?.delta ?? 0), ...(id !== undefined ? { id } : {}), ...(tool ? { tool } : same?.tool ? { tool: same.tool } : {}) }
+  return [...turns.filter(t => t !== same), entry].sort((a, b) => b.delta - a.delta).slice(0, 3)
+}
+
 // A new session or /clear starts the meter's per-conversation counters over.
 // A dollar budget's warnings survive /clear: est. cost is session-wide, so it would only re-toast.
 async function resetConversation($: EngineInterface, keepUsdWarnings: boolean) {
   await update($, warned, () => 0)
   await update($, tools, () => [])
   await update($, autoCompacted, () => false)
+  await update($, turn, () => null)
   await update($, spent, () => 0)
   await update($, stats, () => EMPTY_STATS)
   const b = await read($, budget)
@@ -221,9 +239,13 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  // Each turn starts a fresh top-3 list of its biggest tool results.
+  // Each turn starts a fresh top-3 list of its biggest tool results and measures growth from the current reading.
   on('turn.start', async ($, e, next) => {
-    if (e.agentId === undefined) await update($, tools, () => [])
+    if (e.agentId === undefined) {
+      const [r, id] = await Promise.all([read($, reading), update($, turnSeq, n => n + 1)])
+      await update($, tools, () => [])
+      await update($, turn, () => ({ id, base: r && !r.rebase ? r.tokens : null }))
+    }
     return next(e)
   })
 

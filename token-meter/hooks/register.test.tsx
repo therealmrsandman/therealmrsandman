@@ -516,3 +516,68 @@ test('missing usage numbers leave a readable band', async ($, on) => {
   expect(detail).toBe('  ctx 0/0')
   await ui.unmount()
 })
+
+test('a turn with several readings counts as one turn: one entry, one spike, full growth', async ($, on) => {
+  const toasts: string[] = []
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('turn.start', (_, e) => ({ turnId: e.turnId }))
+  on('command.run', () => ({ text: 'engine' }))
+
+  await $.session.measure({ ...usage(20_000), changed: ['context'] })
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.session.measure({ ...usage(40_000), changed: ['context'] }) // +20k so far
+  await $.session.measure({ ...usage(55_000), changed: ['context'] }) // +35k so far: spike (>30k)
+  await $.session.measure({ ...usage(80_000), changed: ['context'] }) // +60k so far
+  expect(toasts.filter(t => /spike/i.test(t))).toHaveLength(1)
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).toContain('+60k last turn')
+  await ui.unmount()
+
+  await $.turn.start({ text: 'next', turnId: 't2' })
+  await $.session.measure({ ...usage(90_000), changed: ['context'] }) // +10k
+  const text = (await $.command.run({ ...METER, args: 'report' })).text ?? ''
+  expect(text).toContain('Biggest turns: +60k, +10k')
+  expect(text).toContain('Peak context: 45%')
+})
+
+test('a token budget counts each reading once inside a multi-reading turn', async ($, on) => {
+  const toasts: string[] = []
+  mock.store(on, { budget: { kind: 'tokens', limit: 100_000 } })
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('turn.start', (_, e) => ({ turnId: e.turnId }))
+  on('command.run', () => ({ text: 'engine' }))
+  on('session.usage', () => ({ value: { startedAt: 0, ...usage(10_000) } }))
+  on('command.register', () => ({ value: { command: 'meter' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.session.measure({ ...usage(30_000), changed: ['context'] })
+  await $.session.measure({ ...usage(50_000), changed: ['context'] })
+  const text = (await $.command.run({ ...METER, args: 'report' })).text ?? ''
+  expect(text).toContain('Budget: 40% of 100k tokens')
+})
+
+test('a compaction inside a turn restarts that turn\'s growth from the new base', async ($, on) => {
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('turn.start', (_, e) => ({ turnId: e.turnId }))
+  on('session.compact', () => ({ messages: [{ role: 'user', text: 'summary', toolUses: [] }] }))
+
+  await $.session.measure({ ...usage(100_000), changed: ['context'] })
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.session.measure({ ...usage(120_000), changed: ['context'] }) // +20k
+  await $.session.compact({ trigger: 'manual', messages: [{ role: 'user', text: 'hi', toolUses: [] }] } as never)
+  await $.session.measure({ ...usage(30_000), changed: ['context'] }) // new base
+  await $.session.measure({ ...usage(38_000), changed: ['context'] }) // +8k since the compaction
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).toContain('+8.0k last turn')
+  await ui.unmount()
+})
