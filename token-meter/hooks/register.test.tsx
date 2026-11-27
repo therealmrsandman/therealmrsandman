@@ -567,6 +567,7 @@ test('a token budget counts each reading once inside a multi-reading turn', asyn
 })
 
 test('a compaction inside a turn restarts that turn\'s growth from the new base', async ($, on) => {
+  on('command.run', () => ({ text: 'engine' }))
   on('session.measure', (_, e) => ({ changed: e.changed }))
   on('turn.start', (_, e) => ({ turnId: e.turnId }))
   on('session.compact', () => ({ messages: [{ role: 'user', text: 'summary', toolUses: [] }] }))
@@ -580,4 +581,6 @@ test('a compaction inside a turn restarts that turn\'s growth from the new base'
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect((await ui.find({ type: 'Text', text: /ctx/ }))?.text).toContain('+8.0k last turn')
   await ui.unmount()
+  const text = (await $.command.run({ ...METER, args: 'report' })).text ?? ''
+  expect(text).toContain('Biggest turns: +8.0k')
 })

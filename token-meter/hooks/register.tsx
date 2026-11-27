@@ -167,10 +167,11 @@ async function measure($: EngineInterface, u: Usage, autoAt: number) {
   $.ui.status(`ctx ${percent}% · ${k(tokens)}`)
 }
 
-// Keep the three biggest turns. A reading inside a turn replaces that turn's entry rather than adding one.
+// Keep the three biggest turns. A reading inside a turn replaces that turn's entry rather than adding one,
+// so after a compaction mid-turn the entry follows the restarted growth, like the band does.
 const topTurns = (turns: Turn[], delta: number, id: number | undefined, tool: string | undefined): Turn[] => {
   const same = id === undefined ? undefined : turns.find(t => t.id === id)
-  const entry: Turn = { delta: Math.max(delta, same?.delta ?? 0), ...(id !== undefined ? { id } : {}), ...(tool ? { tool } : same?.tool ? { tool: same.tool } : {}) }
+  const entry: Turn = { delta, ...(id !== undefined ? { id } : {}), ...(tool ? { tool } : same?.tool ? { tool: same.tool } : {}) }
   return [...turns.filter(t => t !== same), entry].sort((a, b) => b.delta - a.delta).slice(0, 3)
 }
 
