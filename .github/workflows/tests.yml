@@ -16,6 +16,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Syntax check
+        working-directory: plugins/token-efficiency-routing
+        run: python3 -m py_compile scripts/*.py tests/*.py
       - name: Hook tests
         working-directory: plugins/token-efficiency-routing
         run: python3 -B tests/test_hooks.py
@@ -28,11 +31,11 @@ jobs:
         with:
           node-version: "22"
       - name: Install Claude Code CLI
-        run: npm install -g @anthropic-ai/claude-code
+        run: npm install -g @anthropic-ai/claude-code@2.1.332
       - name: Validate plugins
         run: |
-          claude plugin validate token-meter
+          claude plugin validate plugins/token-meter
           claude plugin validate plugins/token-efficiency-routing
       - name: Plugin tests
-        working-directory: token-meter
+        working-directory: plugins/token-meter
         run: claude plugin test .

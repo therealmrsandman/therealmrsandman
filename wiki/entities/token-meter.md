@@ -1,6 +1,6 @@
 # token-meter
 
-Claude Code plugin (`token-meter/`, v0.1.0). Enabled in `.claude/settings.json` since 2026-11-27. Adds one line above the prompt:
+Claude Code plugin (`plugins/token-meter/`, v0.1.0). Enabled in `.claude/settings.json` since 2026-11-27. Adds one line above the prompt:
 `█████░░░░░ 48%  ctx 96k/200k  +6.2k last turn  ~$0.84 est.  five-hour limit 23%`
 
 ## Parts
@@ -21,10 +21,10 @@ reading, warned, isHidden, tools, budget, budgetWarned, spent, stats, autoCompac
 ToolCost, Budget, Turn, Stats, Reading (`rebase` flag set on /clear and compaction).
 
 ## Tests
-`claude plugin test token-meter` → 34 pass (2026-11-27; adds k() millions and narrow-band truncation). Runner is the CLI, not bun. Test kit `claude-code/testing` lives in harness types, gitignored shim.
+`claude plugin test plugins/token-meter` → 37 pass (2026-11-27; adds k() millions and narrow-band truncation). Runner is the CLI, not bun. Test kit `claude-code/testing` lives in harness types, gitignored shim.
 
 ## Validation
-`claude plugin validate token-meter` passes with no warnings (2026-11-27): the validator no longer reports the `.catch` warning. It still lists `tool.call` and `session.compact` as gating hooks without `.catch`, as information only. The `tool.call` hook has no catch of its own; `session.compact` bookkeeping and the store read in `session.start` catch their errors.
+`claude plugin validate plugins/token-meter` passes with no warnings (2026-11-27): the validator no longer reports the `.catch` warning. It still lists `tool.call` and `session.compact` as gating hooks without `.catch`, as information only. The `tool.call` hook has no catch of its own; `session.compact` bookkeeping and the store read in `session.start` catch their errors.
 
 ## Open
 Icon is a placeholder; replace before directory submission (README).
