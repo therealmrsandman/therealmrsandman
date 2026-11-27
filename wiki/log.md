@@ -12,5 +12,4 @@
 - 2026-11-27 — PR #14 squash-merged (0fcf593); Codex no findings, CI green. Stale claude/ branches deleted. Added `.github/workflows/cleanup-branches.yml` (weekly).
 - 2026-11-27 — token-meter measures growth per turn (one Biggest-turns entry and at most one spike per turn); /token-report follows CLAUDE_CODE_SESSION_ID so two open sessions each see their own numbers.
 - 2026-11-27 — PR #16 merged (8fa161a). token-meter moved to plugins/token-meter; CLI pinned in CI; py_compile step; wiki CI page.
-
-## [2026-11-27] follow-ups | dashboard editor CI test; token-meter advance()/baseOf() refactor; turn comment fixed; .claude/worktrees ignored
+- 2026-11-27 — PR #21 merged (1ebf9f9). `dashboard` CI job runs the inline-editor Playwright test; token-meter baseline/reset folded into advance()/baseOf(); `.claude/worktrees/` ignored.
