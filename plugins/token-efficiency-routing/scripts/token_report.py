@@ -16,8 +16,11 @@ FIELDS = {
 
 root = project_dir()
 stats = load_stats(root)
-sid = stats.get("last")
-s = stats.get("sessions", {}).get(sid, {})
+sessions = stats.get("sessions", {})
+# Claude Code sets CLAUDE_CODE_SESSION_ID for commands it runs, so with two sessions open
+# each reports its own numbers. Without it, fall back to the session that prompted last.
+sid = os.environ.get("CLAUDE_CODE_SESSION_ID") or stats.get("last")
+s = sessions.get(sid, {}) if isinstance(sessions, dict) else {}
 
 main = s.get("transcript") if isinstance(s, dict) else None
 if not isinstance(main, str) or not os.path.isfile(main):
