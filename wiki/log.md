@@ -14,3 +14,4 @@
 - 2026-11-27 — PR #16 merged (8fa161a). token-meter moved to plugins/token-meter; CLI pinned in CI; py_compile step; wiki CI page.
 - 2026-11-27 — PR #21 merged (1ebf9f9). `dashboard` CI job runs the inline-editor Playwright test; token-meter baseline/reset folded into advance()/baseOf(); `.claude/worktrees/` ignored.
 - 2026-11-27 — PR #22 merged (12b88c0): doc fixes from the #21 final review (turn comments, CI job count, repo-map, log format).
+- 2026-11-27 — PR #24 merged (ef8e371): cleanup-branches uses actions/github-script@v8 (Node 24); dry run clean, no Node 20 warning.
