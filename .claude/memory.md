@@ -15,7 +15,7 @@
 - Inline text-only subagent prompts for pressure tests ended without reports; file-based scenario (read file, write answer file) worked (2026-11-26)
 - Pressure-test prompts not saved to disk can't be rerun exactly -> save every scenario file in the scratchpad at creation (2026-11-26)
 ## state
-- PR #13 marked ready for review by user (2026-11-26); Codex review running on d065660. Hooks test passes (python3 tests/test_hooks.py, exit 0). Next: user picks finish option (merge local / PR already open / keep as-is, recommended keep). Do not merge without their choice.
+- PR #13 merged (2026-11-26); Codex review no findings. Branch diff vs main = memory.md only. Next: user decides whether to delete branch or update local main.
 - PR #12 merged (deaea3e); main merged into branch (f70b6bf); draft PR #13 open for memory follow-up.
 - Disabled 11 unused synced plugins via "<name>@synced": false in .claude/settings.json (effective next session; verify skill list shrank).
 - Diagnosis workspace: /root/.superpowers/diagnosing-superpowers/4bcb0feb-9293-5326-bb0a-da70bf496648/ — report.md written (§7 likely); issue search done (closest obra/superpowers #2096, #2034, #2710); next: user picks comment-on-existing vs new issue draft.
