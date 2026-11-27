@@ -15,7 +15,7 @@
 - Inline text-only subagent prompts for pressure tests ended without reports; file-based scenario (read file, write answer file) worked (2026-11-26)
 - Pressure-test prompts not saved to disk can't be rerun exactly -> save every scenario file in the scratchpad at creation (2026-11-26)
 ## state
-- PR #13 merged (2026-11-26); Codex review no findings. Branch diff vs main = memory.md only. Next: user decides whether to delete branch or update local main.
+- Routing skill committed 309a650 at .claude/skills/respect-partner-model-rule; user chose keep branch (remote had been auto-deleted after PR #13 merge; push recreated it). Next: user gives diagnosis summary and productivity todos location (2026-11-27).
 - PR #12 merged (deaea3e); main merged into branch (f70b6bf); draft PR #13 open for memory follow-up.
 - Disabled 11 unused synced plugins via "<name>@synced": false in .claude/settings.json (effective next session; verify skill list shrank).
 - Diagnosis workspace: /root/.superpowers/diagnosing-superpowers/4bcb0feb-9293-5326-bb0a-da70bf496648/ — report.md written (§7 likely); issue search done (closest obra/superpowers #2096, #2034, #2710); next: user picks comment-on-existing vs new issue draft.
