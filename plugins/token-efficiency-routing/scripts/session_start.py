@@ -1,10 +1,8 @@
 """SessionStart: load core rules plus saved state and lessons from project memory."""
 import os
 import re
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import memory_sections, project_dir, read_input  # noqa: E402
+from common import MEMORY_REL, memory_sections, project_dir, read_input
 
 data = read_input()
 plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,5 +20,5 @@ sections = memory_sections(project_dir(data))
 for name in ("state", "lessons"):
     lines = sections.get(name)
     if lines:
-        print(f"\n## {name} (from .claude/memory.md)")
+        print(f"\n## {name} (from {MEMORY_REL})")
         print("\n".join(lines[-15:]))

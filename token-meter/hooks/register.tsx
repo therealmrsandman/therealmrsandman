@@ -22,8 +22,9 @@ const stats = atom({ plugin: 'token-meter', key: 'stats' } as const, EMPTY_STATS
 // Set once auto-compaction ran for the current crossing; cleared when context drops below the threshold.
 const autoCompacted = atom({ plugin: 'token-meter', key: 'autoCompacted' } as const, false)
 
-// Budget levels (%) that fire a one-time toast.
-const BUDGET_LEVELS = [80, 100]
+// Budget levels (%) that fire a one-time toast. The first also turns the band red.
+const BUDGET_LEVELS = [80, 100] as const
+const [BUDGET_RED] = BUDGET_LEVELS
 
 // One turn adding more than this share of the window fires a spike toast.
 const SPIKE = 0.15
@@ -31,9 +32,18 @@ const SPIKE = 0.15
 const CHARS_PER_TOKEN = 4
 
 // Context-fill levels (%) that trigger a one-time nudge toast.
-const THRESHOLDS = [50, 70, 85]
+const THRESHOLDS = [50, 70, 85] as const
+const [, CTX_HIGH, CTX_FULL] = THRESHOLDS
+// The band turns yellow from this fill (%); red from CTX_FULL.
+const CTX_YELLOW = 60
 
-const k = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`)
+// From 999_500 the "k" form would round to "1000k", so it switches to millions there.
+const k = (n: number) =>
+  n >= 999_500
+    ? `${(n / 1e6).toFixed(1)}m`
+    : n >= 1000
+      ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`
+      : `${n}`
 
 const bar = (pct: number, width = 10) => {
   const filled = Math.max(0, Math.min(width, Math.round((pct / 100) * width)))
@@ -43,26 +53,24 @@ const bar = (pct: number, width = 10) => {
 const money = (n: number) => `$${n.toFixed(2)}`
 const fmtBudget = (b: Budget) => (b.kind === 'usd' ? money(b.limit) : `${k(b.limit)} tokens`)
 
-const budgetPct = (b: Budget, r: Reading, used: number) =>
-  Math.round(((b.kind === 'usd' ? (r.usd ?? 0) : used) / b.limit) * 100)
+const budgetPct = (b: Budget, usd: number | null, used: number) =>
+  Math.round(((b.kind === 'usd' ? (usd ?? 0) : used) / b.limit) * 100)
+
+const toBudget = (kind: Budget['kind'], n: number): Budget | 'off' | null => {
+  if (n === 0) return 'off'
+  const b: Budget = { kind, limit: n }
+  return isBudget(b) ? b : null
+}
 
 // "$5", "5$", "2.50$" are dollars; "200000", "200k", "1.5m" are tokens.
 const parseBudget = (raw: string): Budget | 'off' | null => {
   const s = raw.trim().toLowerCase().replace(/,/g, '')
   if (['off', 'clear', 'none'].includes(s)) return 'off'
   const usd = /^\$\s*(\d+(?:\.\d+)?)$|^(\d+(?:\.\d+)?)\s*\$$/.exec(s)
-  if (usd) {
-    const n = Number(usd[1] ?? usd[2])
-    if (n === 0) return 'off'
-    const b: Budget = { kind: 'usd', limit: n }
-    return isBudget(b) ? b : null
-  }
+  if (usd) return toBudget('usd', Number(usd[1] ?? usd[2]))
   const tok = /^(\d+(?:\.\d+)?)\s*([km]?)$/.exec(s)
   if (!tok) return null
-  const n = Math.round(Number(tok[1]) * (tok[2] === 'k' ? 1e3 : tok[2] === 'm' ? 1e6 : 1))
-  if (n === 0) return 'off'
-  const b: Budget = { kind: 'tokens', limit: n }
-  return isBudget(b) ? b : null
+  return toBudget('tokens', Math.round(Number(tok[1]) * (tok[2] === 'k' ? 1e3 : tok[2] === 'm' ? 1e6 : 1)))
 }
 
 const isBudget = (v: unknown): v is Budget =>
@@ -73,20 +81,20 @@ const isBudget = (v: unknown): v is Budget =>
   (v as Budget).limit > 0 &&
   (v as Budget).limit <= Number.MAX_SAFE_INTEGER
 
-const colorFor = (pct: number) => (pct >= 85 ? 'red' : pct >= 60 ? 'yellow' : 'green')
+const colorFor = (pct: number) => (pct >= CTX_FULL ? 'red' : pct >= CTX_YELLOW ? 'yellow' : 'green')
 
 const tip = (pct: number) =>
-  pct >= 85
+  pct >= CTX_FULL
     ? 'Context nearly full: /compact now, or /clear if the task is done.'
-    : pct >= 70
-      ? 'Context over 70%: consider /compact to cut the cost of every turn.'
+    : pct >= CTX_HIGH
+      ? `Context over ${CTX_HIGH}%: consider /compact to cut the cost of every turn.`
       : 'Context past half: /clear between unrelated tasks keeps turns cheap.'
 
 type Usage = { context: SessionContextUsage; cost?: SessionCost; rateLimits: SessionRateLimit[] }
 
 // Shared by session.start and session.measure. autoAt is the auto-compaction threshold (0 = off).
 async function measure($: EngineInterface, u: Usage, autoAt: number) {
-  const prev = await read($, reading)
+  const [prev, [biggest]] = await Promise.all([read($, reading), read($, tools)])
   const tokens = u.context.tokens ?? 0
   const percent =
     u.context.percent ?? (u.context.window > 0 ? Math.round((tokens / u.context.window) * 100) : 0)
@@ -103,7 +111,6 @@ async function measure($: EngineInterface, u: Usage, autoAt: number) {
   // Any reading under the threshold re-arms auto-compaction, even mid-turn.
   if (autoAt > 0 && percent < autoAt) await update($, autoCompacted, () => false)
 
-  const biggest = (await read($, tools))[0]
   await update($, stats, st => ({
     ...st,
     peakPercent: Math.max(st.peakPercent, percent),
@@ -117,10 +124,12 @@ async function measure($: EngineInterface, u: Usage, autoAt: number) {
   }))
 
   const alerts: string[] = []
-  const used = await update($, spent, n => n + Math.max(0, next.turnDelta))
-  const b = await read($, budget)
+  const [used, b] = await Promise.all([
+    update($, spent, n => n + Math.max(0, next.turnDelta)),
+    read($, budget),
+  ])
   if (b) {
-    const pct = budgetPct(b, next, used)
+    const pct = budgetPct(b, next.usd, used)
     const level = BUDGET_LEVELS.filter(l => pct >= l).pop() ?? 0
     if (level > (await read($, budgetWarned))) {
       await update($, budgetWarned, () => level)
@@ -133,10 +142,9 @@ async function measure($: EngineInterface, u: Usage, autoAt: number) {
   }
 
   if (next.window > 0 && next.turnDelta > next.window * SPIKE) {
-    const top = (await read($, tools))[0]
     alerts.push(
       `Token spike: +${k(next.turnDelta)} in one turn (${Math.round((next.turnDelta / next.window) * 100)}% of the window)` +
-        (top ? `, mostly ${top.name}.` : '.'),
+        (biggest ? `, mostly ${biggest.name}.` : '.'),
     )
   }
 
@@ -163,9 +171,7 @@ async function resetConversation($: EngineInterface, keepUsdWarnings: boolean) {
 
 // A short, copy-pasteable summary of the session.
 async function report($: EngineInterface) {
-  const r = await read($, reading)
-  const st = await read($, stats)
-  const b = await read($, budget)
+  const [r, st, b, used] = await Promise.all([read($, reading), read($, stats), read($, budget), read($, spent)])
   const window = r?.window ?? 0
   const lines = [
     'Token meter report',
@@ -175,7 +181,7 @@ async function report($: EngineInterface) {
     `Compactions: ${st.compactions}`,
     `Biggest turns: ${st.turns.length ? st.turns.map(t => `+${k(t.delta)}${t.tool ? ` (${t.tool})` : ''}`).join(', ') : 'none yet'}`,
   ]
-  if (b) lines.push(`Budget: ${budgetPct(b, r ?? { tokens: 0, window, percent: 0, usd: null, limit: null, turnDelta: 0 }, await read($, spent))}% of ${fmtBudget(b)}`)
+  if (b) lines.push(`Budget: ${budgetPct(b, r?.usd ?? null, used)}% of ${fmtBudget(b)}`)
   return lines.join('\n')
 }
 
@@ -292,13 +298,17 @@ export const register: Register = (on, options) => {
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
-    const r = await read($, reading)
-    if (e.props.hasSurvey || r === null || (await read($, isHidden))) return next(e)
+    const [r, hidden, top, b, used] = await Promise.all([
+      read($, reading),
+      read($, isHidden),
+      read($, tools),
+      read($, budget),
+      read($, spent),
+    ])
+    if (e.props.hasSurvey || r === null || hidden) return next(e)
 
-    const top = await read($, tools)
-    const b = await read($, budget)
-    const bPct = b ? budgetPct(b, r, await read($, spent)) : 0
-    const color = b && bPct >= 80 ? 'red' : colorFor(r.percent)
+    const bPct = b ? budgetPct(b, r.usd, used) : 0
+    const color = b && bPct >= BUDGET_RED ? 'red' : colorFor(r.percent)
     const { Box, Text } = $.ui.resolve(e)
     const head = `${bar(r.percent)} ${r.percent}%`
     // Highest priority first; segments are dropped from the end until the row fits.
@@ -306,12 +316,19 @@ export const register: Register = (on, options) => {
       `ctx ${k(r.tokens)}/${k(r.window)}`,
       b ? `budget ${bPct}% of ${fmtBudget(b)}` : '',
       r.turnDelta > 0 ? `+${k(r.turnDelta)} last turn` : '',
-      r.usd !== null ? `~$${r.usd.toFixed(2)} est.` : '',
+      r.usd !== null ? `~${money(r.usd)} est.` : '',
       top.length ? `top: ${top.map(t => `${t.name} ${k(t.tokens)}`).join(', ')}` : '',
       r.limit ? `${r.limit.kind.replace(/_/g, '-')} limit ${Math.round(r.limit.percentUsed)}%` : '',
     ].filter(Boolean)
     const line = () => segs.map(x => `  ${x}`).join('')
     while (segs.length > 1 && head.length + line().length > e.props.bodyColumns) segs.pop()
+    // Still too wide with one segment: cut it short with "…" rather than overflow.
+    const room = e.props.bodyColumns - head.length - 2 // 2 = the segment's leading spaces
+    const [only = ''] = segs
+    if (only.length > room) {
+      if (room > 1) segs[0] = `${only.slice(0, room - 1)}…`
+      else segs.pop()
+    }
 
     return (
       <Box flexDirection="row">

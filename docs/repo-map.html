@@ -31,6 +31,8 @@ p{margin:0}
 .figs b{display:block;font-size:30px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
 .figs span{color:var(--mute);font-size:13px}
 .lede{color:var(--mute);margin-top:10px;max-width:62ch}
+.lede.flush{margin-top:0}
+.band.tight{padding-top:0}
 .meter{margin-top:28px}
 .bar{display:flex;height:34px;border:1px solid var(--ink);background:var(--panel)}
 .bar i{display:block;height:100%;border-right:1px solid var(--bg)}
@@ -67,10 +69,9 @@ td code,.flow code{font-family:"Geist Mono",monospace;font-size:13px;color:light
 .flow{list-style:none;padding:0;margin:14px 0 0}
 .flow li{display:grid;grid-template-columns:minmax(0,15em) 28px minmax(0,1fr);align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px}
 .flow .arr{text-align:center;color:var(--hot);font-weight:600}
-.br{list-style:none;padding:0;margin:14px 0 0}
-.br li{padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px}
-.br .mono{font-size:13px}
-.br span{color:var(--mute)}
+.notes{list-style:none;padding:0;margin:14px 0 0}
+.notes li{padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px}
+.notes .mono{font-size:13px}
 .foot{color:var(--mute);font-size:13px}
 @media(max-width:900px){.map{grid-template-columns:minmax(0,1fr)}.split{grid-template-columns:minmax(0,1fr);gap:28px}}
 @media(max-width:620px){.plugwrap{grid-template-columns:minmax(0,1fr)}.mkt::after{display:none}.rail{height:14px}.flow li{grid-template-columns:minmax(0,1fr);gap:2px}.flow .arr{text-align:left}}
@@ -105,33 +106,33 @@ td code,.flow code{font-family:"Geist Mono",monospace;font-size:13px;color:light
   </div>
 </div></section>
 
-<section class="band" style="padding-top:0"><div class="wrap">
+<section class="band tight"><div class="wrap">
   <h2>What runs during a session</h2>
-  <p class="lede" style="margin-top:0">Each plugin hooks into different moments. token-efficiency-routing uses Python hook scripts; token-meter is one TypeScript module that subscribes to engine events.</p>
+  <p class="lede flush">Each plugin hooks into different moments. token-efficiency-routing uses Python hook scripts; token-meter is one TypeScript module that subscribes to engine events.</p>
   <div class="scroll"><table class="stack">
     <thead><tr><th>Moment</th><th>token-efficiency-routing</th><th>token-meter</th></tr></thead>
     <tbody id="life"></tbody>
   </table></div>
 </div></section>
 
-<section class="band" style="padding-top:0"><div class="wrap split">
+<section class="band tight"><div class="wrap split">
   <div>
     <h2>Shared state</h2>
-    <p class="lede" style="margin-top:0">Files the plugins read and write at runtime.</p>
+    <p class="lede flush">Files the plugins read and write at runtime.</p>
     <ul class="flow" id="flow"></ul>
   </div>
   <div>
-    <h2>Branches</h2>
-    <p class="lede" style="margin-top:0">After fetching on 27 Nov 2026.</p>
-    <ul class="br">
-      <li><span class="mono">main</span> · <span class="mono">5063495</span><br><span>Memory: PR #12 merged, follow-up state (#13). The current session branch is at this commit.</span></li>
-      <li><span class="mono">claude/intelligent-sagan-3j20m0</span> · <span class="mono">d2dea09</span><br><span>Memory-file updates after PR #13 merged.</span></li>
-      <li><span class="mono">claude/lucid-mccarthy-2txr1t</span> · <span class="mono">051bd06</span><br><span>Adds a wiki page for register hooks and logs the PR #7 merge.</span></li>
+    <h2>Layout notes</h2>
+    <p class="lede flush">How the tree is arranged.</p>
+    <ul class="notes">
+      <li><span class="mono">token-meter/</span> sits at the repo root; <span class="mono">token-efficiency-routing</span> lives under <span class="mono">plugins/</span>. The marketplace points at both.</li>
+      <li>Each plugin carries its own tests: <span class="mono">claude plugin test</span> for token-meter, <span class="mono">tests/test_hooks.py</span> for the Python hooks.</li>
+      <li>Work lands on <span class="mono">main</span> through pull requests from <span class="mono">claude/*</span> branches.</li>
     </ul>
   </div>
 </div></section>
 
-<section class="band" style="padding-top:0"><div class="wrap"><p class="foot">Built from the files on this branch, 27 Nov 2026.</p></div></section>
+<section class="band tight"><div class="wrap"><p class="foot">Built from the files on this branch, 27 Nov 2026.</p></div></section>
 
 <script>
 {
@@ -163,11 +164,13 @@ const WS = [
   ['.claude/', 'project config', [['settings.json','enables both plugins; subagents default to Haiku'],['memory.md','## lessons and ## state, read by the hooks',1]]],
   ['wiki/', 'project knowledge base', [['index.md','table of contents'],['log.md','dated changes'],['entities/','token-meter, register-hooks, token-thrift, token-efficiency-routing'],['concepts/','context-budget'],['decisions/','read-before-edit']]],
   ['docs/superpowers/plans/', 'implementation plans', [['2026-11-26-token-thrift-…md','answer-after-context-line experiment'],['../repo-map.html','this map']]],
-  ['repo root', 'profile and workspace', [['README.md','GitHub profile intro'],['dashboard.html','productivity dashboard (3,111 lines)'],['TASKS.md','task list, currently empty'],['LICENSE · .gitignore','MIT; ignores stats files']]]
+  ['repo root', 'profile and workspace', [['README.md','GitHub profile intro'],['dashboard.html','productivity dashboard'],['TASKS.md','task list, currently empty'],['LICENSE · .gitignore','MIT; ignores stats files']]]
 ];
+// Plugin file counts come from the lists in T, so the meter and the map always agree.
+const files = name => T[name].dirs.reduce((a, d) => a + d[1].length, 0);
 const AREAS = [
-  ['token-efficiency-routing',17,'var(--s1)'],
-  ['token-meter',11,'var(--hot)'],
+  ['token-efficiency-routing',files('token-efficiency-routing'),'var(--s1)'],
+  ['token-meter',files('token-meter'),'var(--hot)'],
   ['wiki',8,'var(--s2)'],
   ['root + docs',8,'var(--s3)'],
   ['.claude',2,'var(--s4)']
@@ -192,7 +195,7 @@ const row = ([n, r, hot]) => `<div class="f${hot ? ' hot' : ''}"><i class="dot">
 
 const total = AREAS.reduce((a, x) => a + x[1], 0);
 const hooks = Object.values(T).flatMap(p => p.dirs.flatMap(d => d[1])).filter(f => f[2]).length;
-document.getElementById('figs').innerHTML = [[total,'tracked files'],[2,'plugins'],[hooks,'auto-run files'],[3,'branches']]
+document.getElementById('figs').innerHTML = [[total,'tracked files'],[Object.keys(T).length,'plugins'],[hooks,'auto-run files']]
   .map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join('');
 document.getElementById('bar').innerHTML = AREAS.map(([n, c, col]) => `<i title="${esc(n)}: ${c}" style="width:${c / total * 100}%;background:${col}"></i>`).join('');
 document.getElementById('keys').innerHTML = AREAS.map(([n, c, col]) => `<span><em style="background:${col}"></em>${esc(n)} <b>${c}</b></span>`).join('');

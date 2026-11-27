@@ -1,10 +1,7 @@
 """UserPromptSubmit: inject only the memory lines matching the prompt's keywords."""
-import os
 import re
-import sys
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import memory_sections, project_dir, read_input, update_stats  # noqa: E402
+from common import MEMORY_REL, memory_sections, project_dir, read_input, update_stats
 
 STOP = set("""about after again also because been before being between both could does doing
 during each from have having here into just more most other over same should some such than
@@ -18,11 +15,8 @@ root = project_dir(data)
 TOKEN = re.compile(r"[a-z][a-z0-9_.-]*[a-z0-9]")
 prompt = data.get("prompt")
 prompt = prompt.lower() if isinstance(prompt, str) else ""
-words = []
-for w in TOKEN.findall(prompt):
-    if len(w) >= 4 and w not in STOP and w not in words:
-        words.append(w)
-words = set(words[:8])
+# The first 8 distinct keywords, in prompt order.
+words = set(list(dict.fromkeys(w for w in TOKEN.findall(prompt) if len(w) >= 4 and w not in STOP))[:8])
 
 hits = []
 if words:
@@ -35,7 +29,7 @@ if words:
 hits = hits[:MAX_LINES]
 
 if hits:
-    print("Recalled from .claude/memory.md (use before researching):")
+    print(f"Recalled from {MEMORY_REL} (use before researching):")
     last = None
     for heading, line in hits:
         if heading != last:
@@ -46,9 +40,11 @@ if hits:
 sid = data.get("session_id")
 if sid:
     def record(stats):
-        s = stats.setdefault("sessions", {}).setdefault(sid, {"prompts": 0, "recall_hits": 0, "lines_recalled": 0})
+        sessions = stats.setdefault("sessions", {})
+        # Re-insert so this session counts as the most recent when old ones are pruned.
+        s = sessions[sid] = sessions.pop(sid, None) or {"prompts": 0, "recall_hits": 0, "lines_recalled": 0}
         s["prompts"] += 1
-        s["recall_hits"] += 1 if hits else 0
+        s["recall_hits"] += bool(hits)
         s["lines_recalled"] += len(hits)
         if data.get("transcript_path"):
             s["transcript"] = data["transcript_path"]

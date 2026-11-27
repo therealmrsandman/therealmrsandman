@@ -22,10 +22,13 @@ The single hook module for [[token-meter]]. Declared in `token-meter/hooks/hooks
 
 ## Constants
 
-- `THRESHOLDS = [50, 70, 85]`: context-fill toasts, one per level.
-- `BUDGET_LEVELS = [80, 100]`: budget toasts, one per level.
-- `SPIKE = 0.15`: a turn adding more than 15% of the window fires a spike toast.
-- `CHARS_PER_TOKEN = 4`: rough size of tool output.
+Values live in `token-meter/hooks/register.tsx`; the tips, band colours and budget red are derived from them.
+
+- `THRESHOLDS`: context-fill toasts, one per level (`CTX_HIGH`, `CTX_FULL` are its upper two).
+- `CTX_YELLOW`: context fill at which the band turns yellow.
+- `BUDGET_LEVELS`: budget toasts, one per level; the first (`BUDGET_RED`) also turns the band red.
+- `SPIKE`: share of the window one turn must add to fire a spike toast.
+- `CHARS_PER_TOKEN`: rough size of tool output.
 
 ## Decisions recorded in code comments
 

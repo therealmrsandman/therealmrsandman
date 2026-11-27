@@ -2,6 +2,8 @@
 import json, os, subprocess, sys, tempfile, threading
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from common import MEMORY_REL, STATS_REL  # noqa: E402
 
 def run(script, payload, proj):
     env = dict(os.environ, CLAUDE_PLUGIN_ROOT=ROOT, CLAUDE_PROJECT_DIR=proj)
@@ -11,8 +13,8 @@ def run(script, payload, proj):
 
 def project(memory=""):
     d = tempfile.mkdtemp()
-    os.makedirs(os.path.join(d, ".claude"))
-    open(os.path.join(d, ".claude", "memory.md"), "w").write(memory)
+    os.makedirs(os.path.dirname(os.path.join(d, MEMORY_REL)))
+    open(os.path.join(d, MEMORY_REL), "w").write(memory)
     return d
 
 def transcript(entries):
@@ -44,7 +46,7 @@ def hit(i): run("recall.py", {"prompt": "x", "session_id": "s"}, p)
 ts = [threading.Thread(target=hit, args=(i,)) for i in range(20)]
 [t.start() for t in ts]; [t.join() for t in ts]
 try:
-    n = json.load(open(os.path.join(p, ".claude", "token-efficiency-stats.json")))["sessions"]["s"]["prompts"]
+    n = json.load(open(os.path.join(p, STATS_REL)))["sessions"]["s"]["prompts"]
 except Exception:
     n = -1
 check("stats concurrent prompts == 20", n == 20)
@@ -62,8 +64,27 @@ d = tempfile.mkdtemp(); main = os.path.join(d, "sid.jsonl")
 os.makedirs(os.path.join(d, "sid", "subagents"))
 u = lambda i: json.dumps({"message": {"id": i, "usage": {"output_tokens": 100}}}) + "\n"
 open(main, "w").write(u("a")); open(os.path.join(d, "sid", "subagents", "x.jsonl"), "w").write(u("b"))
-json.dump({"last": "sid", "sessions": {"sid": {"transcript": main}}}, open(os.path.join(q, ".claude", "token-efficiency-stats.json"), "w"))
+json.dump({"last": "sid", "sessions": {"sid": {"transcript": main}}}, open(os.path.join(q, STATS_REL), "w"))
 _, out = run("token_report.py", {}, q)
 check("report includes agent tokens", "| Output tokens | 200 |" in out)
+
+# 6. a slash command after a saved task starts a new task: no second memory prompt
+cmd = {"type": "user", "message": {"content": "<command-name>/token-report</command-name>"}}
+t = transcript([{"type": "user", "message": {"content": "do task"}}, TOOL, TOOL, TOOL, cmd,
+                {"type": "assistant", "message": {"content": [{"type": "text", "text": "report"}]}}])
+_, out = run("stop.py", {"transcript_path": t}, p)
+check("stop resets after <command- prompt", out.strip() == "")
+t = transcript([{"type": "user", "message": {"content": "do task"}}, TOOL, TOOL,
+                {"type": "user", "message": {"content": "<local-command-stdout>ok</local-command-stdout>"}}, TOOL])
+_, out = run("stop.py", {"transcript_path": t}, p)
+check("stop keeps counting past <local-command output", '"block"' in out)
+
+# 7. stats keep only the 20 most recent sessions
+r = project()
+for i in range(25):
+    run("recall.py", {"prompt": "x", "session_id": f"s{i}"}, r)
+run("recall.py", {"prompt": "x", "session_id": "s0"}, r)  # s0 was pruned; now it is the newest again
+ids = list(json.load(open(os.path.join(r, STATS_REL)))["sessions"])
+check("stats pruned to 20 most recent", len(ids) == 20 and ids[-1] == "s0" and "s5" not in ids and "s6" in ids)
 
 sys.exit(1 if FAIL else 0)
