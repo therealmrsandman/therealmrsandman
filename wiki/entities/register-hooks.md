@@ -1,6 +1,6 @@
 # register.tsx (hook module)
 
-The single hook module for [[token-meter]]. Declared in `plugins/token-meter/hooks/hooks.json`, implemented in `plugins/token-meter/hooks/register.tsx`, tested in `register.test.tsx` (32 tests, run with `claude plugin test .`).
+The single hook module for [[token-meter]]. Declared in `plugins/token-meter/hooks/hooks.json`, implemented in `plugins/token-meter/hooks/register.tsx`, tested in `register.test.tsx` (37 tests, run with `claude plugin test .`).
 
 ## Events handled
 
