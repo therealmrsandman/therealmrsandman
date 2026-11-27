@@ -5,6 +5,7 @@
 - [[register-hooks]] — `register.tsx`: the events, state atoms, constants, and `/meter` command behind the plugin.
 - [[token-thrift]] — bundled skill: keeps replies, searches, and command output lean.
 - [[token-efficiency-routing]] — Python plugin: memory recall hooks, Haiku/Sonnet/Opus agents, `/token-report`.
+- [[ci]] — GitHub Actions: plugin tests on every PR, weekly stale-branch cleanup.
 
 ## Concepts
 - [[context-budget]] — context fill, token budget, cost estimate, auto-compaction thresholds.
