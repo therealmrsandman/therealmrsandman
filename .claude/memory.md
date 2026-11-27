@@ -18,7 +18,7 @@
 - User said branches were deleted but list_branches still showed them (local delete) -> always verify with list_branches before reporting done (2026-11-27)
 - Squash merges leave merged branches non-ancestors of main -> stale-branch cleanup must check PR state, not git ancestry alone (2026-11-27)
 ## state
-- PRs #14 (0fcf593), #15 (6f84727) merged 2026-11-27; #16 (per-turn growth, /token-report session) open. Follow-up branch: CLI pinned, token-meter moved to plugins/token-meter, CI page, py_compile step. Left: dashboard duplicate editors; token-meter baseline/reset refactor; dry-run cleanup-branches after merge.
+- PRs #14 (0fcf593), #15 (6f84727) merged 2026-11-27; #16 (8fa161a) merged. Follow-up branch: CLI pinned, token-meter moved to plugins/token-meter, CI page, py_compile step. Left: dashboard duplicate editors; token-meter baseline/reset refactor; dry-run cleanup-branches after merge.
 - Disabled 11 unused synced plugins via "<name>@synced": false in .claude/settings.json (effective next session; verify skill list shrank).
 - Diagnosis workspace: /root/.superpowers/diagnosing-superpowers/4bcb0feb-9293-5326-bb0a-da70bf496648/ — report.md written (§7 likely); issue search done (closest obra/superpowers #2096, #2034, #2710); next: user picks comment-on-existing vs new issue draft.
 - Productivity memory bootstrap awaits where todos live.

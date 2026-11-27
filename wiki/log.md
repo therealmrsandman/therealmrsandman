@@ -11,3 +11,4 @@
 - 2026-11-27 — Cleanup: token-meter band/report reads batched, k() shows millions, narrow band truncates with …; Python hooks share iter_jsonl, prune stats to 20 sessions, slash commands reset the stop count; dashboard markdown keeps code out of emphasis; repo-map counts computed; README lists both plugins. Tests 34/34 and 8/8.
 - 2026-11-27 — PR #14 squash-merged (0fcf593); Codex no findings, CI green. Stale claude/ branches deleted. Added `.github/workflows/cleanup-branches.yml` (weekly).
 - 2026-11-27 — token-meter measures growth per turn (one Biggest-turns entry and at most one spike per turn); /token-report follows CLAUDE_CODE_SESSION_ID so two open sessions each see their own numbers.
+- 2026-11-27 — PR #16 merged (8fa161a). token-meter moved to plugins/token-meter; CLI pinned in CI; py_compile step; wiki CI page.
