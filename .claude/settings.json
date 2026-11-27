@@ -12,17 +12,6 @@
   },
   "enabledPlugins": {
     "token-efficiency-routing@therealmrsandman": true,
-    "token-meter@therealmrsandman": true,
-    "sales@synced": false,
-    "legal@synced": false,
-    "canva@synced": false,
-    "marketing@synced": false,
-    "design@synced": false,
-    "small-business@synced": false,
-    "claude-ecommerce-os-v1@synced": false,
-    "cowork-plugin-management@synced": false,
-    "system-design-skills@synced": false,
-    "frontend-design@synced": false,
-    "skill-creator@synced": false
+    "token-meter@therealmrsandman": true
   }
 }
