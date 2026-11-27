@@ -3,7 +3,7 @@
   "owner": { "name": "therealmrsandman" },
   "description": "Two token-saving Claude Code plugins: token-meter (a live context meter, budgets and auto-compact) and token-efficiency-routing (memory recall, model routing, /token-report).",
   "plugins": [
-    { "name": "token-meter", "source": "./token-meter" },
+    { "name": "token-meter", "source": "./plugins/token-meter" },
     {
       "name": "token-efficiency-routing",
       "source": "./plugins/token-efficiency-routing",

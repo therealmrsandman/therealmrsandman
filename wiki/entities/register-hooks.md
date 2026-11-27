@@ -1,6 +1,6 @@
 # register.tsx (hook module)
 
-The single hook module for [[token-meter]]. Declared in `token-meter/hooks/hooks.json`, implemented in `token-meter/hooks/register.tsx`, tested in `register.test.tsx` (32 tests, run with `claude plugin test .`).
+The single hook module for [[token-meter]]. Declared in `plugins/token-meter/hooks/hooks.json`, implemented in `plugins/token-meter/hooks/register.tsx`, tested in `register.test.tsx` (32 tests, run with `claude plugin test .`).
 
 ## Events handled
 
@@ -22,7 +22,7 @@ The single hook module for [[token-meter]]. Declared in `token-meter/hooks/hooks
 
 ## Constants
 
-Values live in `token-meter/hooks/register.tsx`; the tips, band colours and budget red are derived from them.
+Values live in `plugins/token-meter/hooks/register.tsx`; the tips, band colours and budget red are derived from them.
 
 - `THRESHOLDS`: context-fill toasts, one per level (`CTX_HIGH`, `CTX_FULL` are its upper two).
 - `CTX_YELLOW`: context fill at which the band turns yellow.

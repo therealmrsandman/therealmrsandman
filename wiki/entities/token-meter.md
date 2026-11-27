@@ -1,6 +1,6 @@
 # token-meter
 
-Claude Code plugin (`token-meter/`, v0.1.0). Enabled in `.claude/settings.json` since 2026-11-27. Adds one line above the prompt:
+Claude Code plugin (`plugins/token-meter/`, v0.1.0). Enabled in `.claude/settings.json` since 2026-11-27. Adds one line above the prompt:
 `█████░░░░░ 48%  ctx 96k/200k  +6.2k last turn  ~$0.84 est.  five-hour limit 23%`
 
 ## Parts

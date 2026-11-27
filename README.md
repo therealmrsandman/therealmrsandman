@@ -9,7 +9,7 @@
 
 ## Plugins in this repo
 
-- [token-meter](token-meter/): a one-line meter above the prompt for context fill, cost and budget.
+- [token-meter](plugins/token-meter/): a one-line meter above the prompt for context fill, cost and budget.
 - [token-efficiency-routing](plugins/token-efficiency-routing/): memory recall, model-routed agents and `/token-report`.
 
 Install: `/plugin marketplace add therealmrsandman/therealmrsandman`

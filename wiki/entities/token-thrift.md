@@ -1,6 +1,6 @@
 # token-thrift (skill)
 
-Bundled in `token-meter/skills/token-thrift/SKILL.md`. Rule: spend tokens only on what the user asked.
+Bundled in `plugins/token-meter/skills/token-thrift/SKILL.md`. Rule: spend tokens only on what the user asked.
 
 ## Sections
 1. **Context check:** read fill from meter. 70%+ same task → first line "run /compact". 50%+ unrelated topic → line 1 "run /clear first", then the full answer from line 2 (the work is done anyway; the user decides).
