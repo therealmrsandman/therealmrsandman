@@ -19,7 +19,7 @@
 - Squash merges leave merged branches non-ancestors of main -> stale-branch cleanup must check PR state, not git ancestry alone (2026-11-27)
 - Another session recreated a branch the user had deleted (intelligent-sagan, pushed "branch kept") -> never push to a branch after its PR merged or the user deleted it; restart from main on a new branch instead (2026-11-27)
 ## state
-- PRs #14–#24 merged 2026-11-27 (#21: dashboard editor test in CI, token-meter advance()/baseOf() refactor; #22: doc fixes from its final review; #24: actions/github-script v8).
+- PRs #14–#25 merged 2026-11-27 (#21: dashboard editor test in CI, token-meter advance()/baseOf() refactor; #22: doc fixes from its final review; #24: actions/github-script v8; #25: this log).
 - Disabled 11 unused synced plugins via "<name>@synced": false in .claude/settings.json (effective next session; verify skill list shrank).
 - Diagnosis workspace: /root/.superpowers/diagnosing-superpowers/4bcb0feb-9293-5326-bb0a-da70bf496648/ — report.md written (§7 likely); issue search done (closest obra/superpowers #2096, #2034, #2710); next: user picks comment-on-existing vs new issue draft.
 - Productivity memory bootstrap awaits where todos live.
