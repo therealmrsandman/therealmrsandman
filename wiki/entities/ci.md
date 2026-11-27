@@ -9,7 +9,7 @@ GitHub Actions in `.github/workflows/`.
 | `token-meter` | Node 22 · installs a pinned `@anthropic-ai/claude-code` · `claude plugin validate` on both plugins · `claude plugin test .` in `plugins/token-meter` |
 | `dashboard` | Node 22 · installs pinned `playwright` + Chromium · `node tests/dashboard-editors.test.js` (board/list inline editors in `dashboard.html`) |
 
-Bump the pinned CLI version on purpose and check that both jobs stay green.
+Bump the pinned CLI version on purpose and check that all three jobs stay green.
 
 ## cleanup-branches.yml (Mondays 04:17 UTC, or by hand)
 Deletes a `claude/*` branch only when all of these hold:

@@ -21,7 +21,7 @@ const EMPTY_STATS: Stats = { peakPercent: 0, peakTokens: 0, compactions: 0, turn
 const stats = atom({ plugin: 'token-meter', key: 'stats' } as const, EMPTY_STATS)
 // Set once auto-compaction ran for the current crossing; cleared when context drops below the threshold.
 const autoCompacted = atom({ plugin: 'token-meter', key: 'autoCompacted' } as const, false)
-// The main-loop turn in progress: its number and the context size it started from (null until a reading sets it).
+// The current main-loop turn, or the last one until a reset: its number and the context size it started from (null until a reading sets it).
 // Readings between turns add to the last turn until session.start or /clear resets it; before the first turn each reading is its own step.
 type TurnState = { id: number; base: number | null }
 const turn = atom({ plugin: 'token-meter', key: 'turn' } as const, null as TurnState | null)
@@ -103,7 +103,7 @@ const baseOf = (r: Reading | null) => (r && !r.rebase ? r.tokens : null)
 // Every baseline/reset decision for one reading. step: growth since the last reading (the spend), 0 when there is
 // no usable base. base: where the current turn's growth counts from; it restarts at this reading when the turn has
 // none yet or a rebase came since. reset: the turn's base moved and must be written back.
-// Outside a turn the reading's growth is just its step.
+// With no turn yet (or after a reset) the reading's growth is just its step.
 const advance = (prev: Reading | null, tokens: number, cur: TurnState | null) => {
   const from = baseOf(prev)
   const step = from === null ? 0 : tokens - from
@@ -271,7 +271,7 @@ export const register: Register = (on, options) => {
   })
 
   // Count compactions that happened (not skipped, not precomputed) in the main loop.
-  // The context shrank outside any turn, so the next reading is a fresh base: no growth, spike or spend.
+  // Compaction shrank the context, so the next reading is a fresh base: no growth, spike or spend.
   on('session.compact', async ($, e, next) => {
     const r = await next(e)
     if (e.agentId === undefined && e.trigger !== 'precompute' && 'messages' in r) {
