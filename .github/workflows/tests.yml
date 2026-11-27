@@ -39,3 +39,17 @@ jobs:
       - name: Plugin tests
         working-directory: plugins/token-meter
         run: claude plugin test .
+
+  dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: Dashboard editor tests
+        run: node tests/dashboard-editors.test.js
