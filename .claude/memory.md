@@ -16,7 +16,7 @@
 - Pressure-test prompts not saved to disk can't be rerun exactly -> save every scenario file in the scratchpad at creation (2026-11-26)
 ## state
 - Routing skill committed 309a650 at .claude/skills/respect-partner-model-rule; user chose keep branch (remote had been auto-deleted after PR #13 merge; push recreated it). Next: user gives diagnosis summary and productivity todos location (2026-11-27).
-- Code review fixes (2026-11-27): stale state removed; skill now defines "covers" (general cost clause covers every dispatch -> cheapest model that can do the task) and dropped the conflicting 'ask the partner' step (conflict note now names the skill's model). Edited skill text NOT yet pressure-tested; next: rerun A/B/C with full SKILL.md if user wants (~80k tokens each).
+- Code review fixes (2026-11-27): stale state removed; skill now defines "covers" (general cost clause covers every dispatch -> cheapest model that can do the task) and dropped the conflicting 'ask the partner' step (conflict note now names the skill's model). v2 rerun with full SKILL.md (2026-11-27, 1 rep each, ~72k tokens each): A haiku, B sonnet (conflict note names opus), C haiku (note offers sonnet upgrade given past errors); all RULE partner. Next: optional B repeats to check stability.
 - Disabled 11 unused synced plugins via "<name>@synced": false in .claude/settings.json (effective next session; verify skill list shrank).
 - Diagnosis workspace: /root/.superpowers/diagnosing-superpowers/4bcb0feb-9293-5326-bb0a-da70bf496648/ — report.md written (§7 likely); issue search done (closest obra/superpowers #2096, #2034, #2710); next: user picks comment-on-existing vs new issue draft.
 - Productivity memory bootstrap awaits where todos live.
