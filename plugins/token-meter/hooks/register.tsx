@@ -22,7 +22,7 @@ const stats = atom({ plugin: 'token-meter', key: 'stats' } as const, EMPTY_STATS
 // Set once auto-compaction ran for the current crossing; cleared when context drops below the threshold.
 const autoCompacted = atom({ plugin: 'token-meter', key: 'autoCompacted' } as const, false)
 // The main-loop turn in progress: its number and the context size it started from (null until a reading sets it).
-// Readings outside any turn each count as their own step.
+// Readings between turns add to the last turn until session.start or /clear resets it; before the first turn each reading is its own step.
 type TurnState = { id: number; base: number | null }
 const turn = atom({ plugin: 'token-meter', key: 'turn' } as const, null as TurnState | null)
 const turnSeq = atom({ plugin: 'token-meter', key: 'turnSeq' } as const, 0)
