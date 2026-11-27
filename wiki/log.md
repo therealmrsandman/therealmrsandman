@@ -13,3 +13,4 @@
 - 2026-11-27 — token-meter measures growth per turn (one Biggest-turns entry and at most one spike per turn); /token-report follows CLAUDE_CODE_SESSION_ID so two open sessions each see their own numbers.
 - 2026-11-27 — PR #16 merged (8fa161a). token-meter moved to plugins/token-meter; CLI pinned in CI; py_compile step; wiki CI page.
 - 2026-11-27 — PR #21 merged (1ebf9f9). `dashboard` CI job runs the inline-editor Playwright test; token-meter baseline/reset folded into advance()/baseOf(); `.claude/worktrees/` ignored.
+- 2026-11-27 — PR #22 merged (12b88c0): doc fixes from the #21 final review (turn comments, CI job count, repo-map, log format).
